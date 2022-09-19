@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # 拉取镜像
 docker pull docker.elastic.co/elasticsearch/elasticsearch:7.17.0
 

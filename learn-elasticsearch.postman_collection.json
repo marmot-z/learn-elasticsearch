@@ -16,6 +16,7 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"// 验证 elasticsearch 是否启动成功",
 									"pm.test('elasticsearch start successful', function() {",
 									"    let body = pm.response.json();",
 									"    let version = pm.collectionVariables.get('esVersion');",
@@ -23,6 +24,17 @@
 									"    return pm.response.status == 200 &&",
 									"            body.version.name === version;",
 									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let body = pm.request.body.raw;",
+									"",
+									"console.log(body);"
 								],
 								"type": "text/javascript"
 							}
@@ -36,11 +48,427 @@
 							"host": [
 								"{{esHost}}"
 							]
-						}
+						},
+						"description": "### install elasticsearch\n\n-通过 [start.sh](../start.sh) 在 docker 中启动 ElasticSearch，然后发送 `get elasticsearch version` 请求，观察 Tests  是否成功。"
 					},
 					"response": []
 				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
 			]
+		},
+		{
+			"name": "document",
+			"item": [
+				{
+					"name": "create document",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let getDocumentById = eval(pm.globals.get(\"getDocumentById\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"let body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    (cb) => getDocumentById({indexName: 'users',id: 1}, cb),",
+									"    (cb) => deleteIndex('users', cb)",
+									"], (err, results) => {",
+									"    if (err) throw err;",
+									"",
+									"    pm.test('create document successful', function() {",
+									"        pm.expect(results[0]._id).eq('1');",
+									"        pm.expect(results[0].found).eq(true);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"Mike\",\n    \"post_date\": \"2019-04-15T14:12:12\",\n    \"message\": \"trying out kibana\"\n}"
+						},
+						"url": {
+							"raw": "{{esHost}}/users/_doc/1",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"users",
+								"_doc",
+								"1"
+							]
+						},
+						"description": "### create document\n\n演示如何创建文档，如果文档对应的索引不存在，则根据文档内容自动推导索引字段类型进行创建"
+					},
+					"response": []
+				},
+				{
+					"name": "index document",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => createDocument({",
+									"        indexName: 'users',",
+									"        doc: {",
+									"            \"user\": \"Mike\",",
+									"            \"post_date\": \"2019-04-15T14:12:12\",",
+									"            \"message\": \"trying out kibana\"",
+									"        },",
+									"        id: 1",
+									"    }, cb)",
+									"], (err, res) => {",
+									"    if (err) throw err;",
+									"",
+									"    console.log(`创建文档 ${res ? '成功' : '失败'}`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let getDocumentById = eval(pm.globals.get(\"getDocumentById\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => getDocumentById({indexName: 'users',id: 1}, cb),",
+									"    (cb) => deleteIndex('users', cb)",
+									"], (err, results) => {",
+									"    if (err) throw err;",
+									"",
+									"    let doc = results[0];",
+									"",
+									"    pm.test('index document successful', function() {",
+									"        pm.expect(doc._version).eq(2);",
+									"        pm.expect(doc._source.user).eq('Lucy');",
+									"        // 不保留文档原先字段内容",
+									"        pm.expect(doc._source.message).is.undefined;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"Lucy\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/users/_doc/1",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"users",
+								"_doc",
+								"1"
+							]
+						},
+						"description": "### index document\n\nindex 作用：\n\n- 如果文档不存在，则创建文档\n- 如果文档存在，则删除旧文档，然后创建新文档，并将_version +1\n    \nindex 与 update 区别：index 会覆盖原先的文档，而 update 只会更新部分字段"
+					},
+					"response": []
+				},
+				{
+					"name": "update document",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => createDocument({",
+									"        indexName: 'users',",
+									"        doc: {",
+									"            \"user\": \"Mike\",",
+									"            \"post_date\": \"2019-04-15T14:12:12\",",
+									"            \"message\": \"trying out kibana\"",
+									"        },",
+									"        id: 1",
+									"    }, cb)",
+									"], (err, res) => {",
+									"    if (err) throw err;",
+									"",
+									"    console.log(`创建文档 ${res ? '成功' : '失败'}`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let getDocumentById = eval(pm.globals.get(\"getDocumentById\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => getDocumentById({indexName: 'users',id: 1}, cb),",
+									"    (cb) => deleteIndex('users', cb)",
+									"], (err, results) => {",
+									"    if (err) throw err;",
+									"",
+									"    let doc = results[0];",
+									"",
+									"    pm.test('update document successful', function() {",
+									"        pm.expect(doc._version).eq(2);",
+									"        pm.expect(doc._source.user).eq('Lucy');",
+									"        // 保留文档原先字段内容",
+									"        pm.expect(doc._source.message).eq('trying out kibana');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"doc\": {\n        \"user\": \"Lucy\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/users/_update/1",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"users",
+								"_update",
+								"1"
+							]
+						},
+						"description": "### update document\nupdate 只会更新文档对应的字段，其他未更新的字段内容不会变化，并将 _version +1"
+					},
+					"response": []
+				},
+				{
+					"name": "get document",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => createDocument({",
+									"        indexName: 'users',",
+									"        doc: {",
+									"            \"user\": \"Mike\",",
+									"            \"post_date\": \"2019-04-15T14:12:12\",",
+									"            \"message\": \"trying out kibana\"",
+									"        },",
+									"        id: 1",
+									"    }, cb)",
+									"], (err, res) => {",
+									"    if (err) throw err;",
+									"",
+									"    console.log(`创建文档 ${res ? '成功' : '失败'}`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"let body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    (cb) => deleteIndex('users', cb)",
+									"], (err, results) => {",
+									"    if (err) throw err;",
+									"",
+									"    pm.test('get document(1) successful', function() {",
+									"        pm.expect(body.found).eq(true);",
+									"        pm.expect(body._source.user).eq('Mike');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{esHost}}/users/_doc/1",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"users",
+								"_doc",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete document",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => createDocument({",
+									"        indexName: 'users',",
+									"        doc: {",
+									"            \"user\": \"Mike\",",
+									"            \"post_date\": \"2019-04-15T14:12:12\",",
+									"            \"message\": \"trying out kibana\"",
+									"        },",
+									"        id: 1",
+									"    }, cb)",
+									"], (err, res) => {",
+									"    if (err) throw err;",
+									"",
+									"    console.log(`创建文档 ${res ? '成功' : '失败'}`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let getDocumentById = eval(pm.globals.get(\"getDocumentById\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"",
+									"asyncSeries([",
+									"    (cb) => getDocumentById({indexName: 'users',id: 1}, cb),",
+									"    (cb) => deleteIndex('users', cb)",
+									"], (err, results) => {",
+									"    if (err) throw err;",
+									"",
+									"    let doc = results[0];",
+									"",
+									"    pm.test('delete document successful', function() {",
+									"        // document 1 not found",
+									"        pm.expect(doc.found).eq(false);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{esHost}}/users/_doc/1",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"users",
+								"_doc",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "mget",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "msearch",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "bulket",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			],
+			"description": "演示如何文档的增删改查：\n\n- 增加(create document)  \n- index(index document)  \n- 更新(update document)  \n- 获取(get document)  \n- 删除(delete document)"
 		}
 	],
 	"event": [
@@ -55,24 +483,22 @@
 					"pm.collectionVariables.set('esHost', elasticsearchHost);",
 					"pm.collectionVariables.set('esVersion', elasticsearchVersion);",
 					"",
+					"// set default header",
+					"pm.request.headers.add({key: 'Content-type', value: 'application/json'});",
+					"",
 					"/**",
 					" * global function",
 					" */",
-					"utils = {",
-					"",
+					"let utils = {",
 					"    /**",
 					"     * 创建 es 索引",
 					"     * ",
 					"     * @param indexName 索引名称",
 					"     * @param mappings mappings",
 					"     * @param settings settings",
-					"     * @return {{Promise}} promise",
+					"     * @return 索引是否创建成功",
 					"     */",
-					"    createIndex: function(indexName, mappings, settings) {",
-					"        if (!indexName) {",
-					"            throw new Error('索引名称不能为空');",
-					"        }",
-					"",
+					"    createIndex: function(indexName, mappings = {}, settings = {}) {",
 					"        return new Promise((resolve, reject) => {",
 					"            pm.sendRequest({",
 					"                url: `${elasticsearchHost}/${indexName}`,",
@@ -87,19 +513,124 @@
 					"                let body = resp.json();",
 					"",
 					"                resolve(body.acknowledged && body.index === indexName);",
-					"            })",
+					"            });",
 					"        });",
 					"    },",
 					"",
-					"    ",
-					"    deleteIndex: function(indexName) {},",
+					"    deleteIndex: function(indexName) {",
+					"        return new Promise((resolve, reject) => {",
+					"            pm.sendRequest({",
+					"                url: `${elasticsearchHost}/${indexName}`,",
+					"                method: 'DELETE',",
+					"            }, (err, resp) => {",
+					"                if (err) return reject(err);",
 					"",
-					"    saveDocument: function (indexName, doc, id) {},",
+					"                let body = resp.json();",
 					"",
-					"    updateDocument: function (indexName, doc, id) {},",
+					"                resolve(body.acknowledged);",
+					"            });",
+					"        });",
+					"    },",
+					"",
+					"    saveDocument: function(indexName, doc, id) {},",
+					"",
+					"    /**",
+					"     * 根据 id 获取文档",
+					"     * ",
+					"     * @param indexName 索引名称",
+					"     * @param id 文档 id",
+					"     * @returns 文档内容",
+					"     */",
+					"    getDocumentById: function(indexName, id) {",
+					"        return new Promise((resolve, reject) => {",
+					"            pm.sendRequest({",
+					"                url: `${elasticsearchHost}/${indexName}/${id}`,",
+					"                method: 'GET'",
+					"            }, (err, resp) => {",
+					"                if (err) return reject(err);",
+					"",
+					"                resolve(resp.json());",
+					"            });",
+					"        });",
+					"    },",
+					"",
+					"    searchDocument: function(searchDsl) {},",
+					"",
+					"    updateDocument: function(indexName, doc, id) {},",
 					"",
 					"    deleteDocument: function(indexName, id) {}",
-					"};"
+					"};",
+					"",
+					"// see also: https://www.postman.com/postman/workspace/postman-answers/request/3407886-06011115-e3cf-4711-926c-55a417d530f1",
+					"postman.setGlobalVariable('asyncSeries', (tasks, cb = () => {}) => {",
+					"    let _series = function(tasks, cb, currOperation = 0, results = []) {",
+					"        // Bail-out condition",
+					"        if (currOperation === tasks.length) {",
+					"            return cb(null, results);",
+					"        }",
+					"",
+					"        if (typeof tasks[currOperation] !== 'function') {",
+					"            return cb(new Error('asyncSeries: Please provide a function'));",
+					"        }",
+					"",
+					"        tasks[currOperation]((err, res) => {",
+					"            if (err) {",
+					"                return cb(err);",
+					"            }",
+					"",
+					"            results.push(res);",
+					"",
+					"            // Recursively call the next task in series till we're done executing all the operations",
+					"            return _series(tasks, cb, currOperation + 1, results);",
+					"        });",
+					"    }",
+					"",
+					"    return _series(tasks, cb);",
+					"});",
+					"",
+					"postman.setGlobalVariable('deleteIndex', (indexName, callback) => {",
+					"   pm.sendRequest({",
+					"        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,",
+					"        method: 'DELETE'",
+					"    }, (err, resp) => {",
+					"        if (err) return callback(err);",
+					"",
+					"        let body = resp.json();",
+					"",
+					"        callback(null, body.acknowledged);",
+					"    });",
+					"});",
+					"",
+					"postman.setGlobalVariable('createDocument', (options, callback) => {",
+					"    pm.sendRequest({",
+					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id}`,",
+					"        method: 'POST',",
+					"        header: {",
+					"            'Content-type': 'application/json'",
+					"        },",
+					"        body: {",
+					"            mode: 'raw',",
+					"            raw: JSON.stringify(options.doc)",
+					"        }",
+					"    }, (err, resp) => {",
+					"        if (err) return callback(err);",
+					"",
+					"        let body = resp.json();",
+					"",
+					"        callback(null, body.result === 'created');",
+					"    });",
+					"});",
+					"",
+					"postman.setGlobalVariable('getDocumentById', (options, callback) => {",
+					"    pm.sendRequest({",
+					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id}`,",
+					"        method: 'GET',",
+					"    }, (err, resp) => {",
+					"        if (err) return callback(err);",
+					"",
+					"        callback(null, resp.json());",
+					"    });",
+					"});"
 				]
 			}
 		},
