@@ -1,87 +1,14 @@
 const elasticsearchHost = 'http://localhost:9200';
 const elasticsearchVersion = '7.17.0';
 
+// set global varibales
 pm.collectionVariables.set('esHost', elasticsearchHost);
 pm.collectionVariables.set('esVersion', elasticsearchVersion);
 
 // set default header
 pm.request.headers.add({key: 'Content-type', value: 'application/json'});
 
-/**
- * global function
- */
-let utils = {
-    /**
-     * 创建 es 索引
-     * 
-     * @param indexName 索引名称
-     * @param mappings mappings
-     * @param settings settings
-     * @return 索引是否创建成功
-     */
-    createIndex: function(indexName, mappings = {}, settings = {}) {
-        return new Promise((resolve, reject) => {
-            pm.sendRequest({
-                url: `${elasticsearchHost}/${indexName}`,
-                method: 'PUT',
-                body: {
-                    settings: settings,
-                    mappings: mappings
-                }
-            }, (err, resp) => {
-                if (err) return reject(err);
-
-                let body = resp.json();
-
-                resolve(body.acknowledged && body.index === indexName);
-            });
-        });
-    },
-
-    deleteIndex: function(indexName) {
-        return new Promise((resolve, reject) => {
-            pm.sendRequest({
-                url: `${elasticsearchHost}/${indexName}`,
-                method: 'DELETE',
-            }, (err, resp) => {
-                if (err) return reject(err);
-
-                let body = resp.json();
-
-                resolve(body.acknowledged);
-            });
-        });
-    },
-
-    saveDocument: function(indexName, doc, id) {},
-
-    /**
-     * 根据 id 获取文档
-     * 
-     * @param indexName 索引名称
-     * @param id 文档 id
-     * @returns 文档内容
-     */
-    getDocumentById: function(indexName, id) {
-        return new Promise((resolve, reject) => {
-            pm.sendRequest({
-                url: `${elasticsearchHost}/${indexName}/${id}`,
-                method: 'GET'
-            }, (err, resp) => {
-                if (err) return reject(err);
-
-                resolve(resp.json());
-            });
-        });
-    },
-
-    searchDocument: function(searchDsl) {},
-
-    updateDocument: function(indexName, doc, id) {},
-
-    deleteDocument: function(indexName, id) {}
-};
-
+// set global function
 // see also: https://www.postman.com/postman/workspace/postman-answers/request/3407886-06011115-e3cf-4711-926c-55a417d530f1
 postman.setGlobalVariable('asyncSeries', (tasks, cb = () => {}) => {
     let _series = function(tasks, cb, currOperation = 0, results = []) {
@@ -107,6 +34,26 @@ postman.setGlobalVariable('asyncSeries', (tasks, cb = () => {}) => {
     }
 
     return _series(tasks, cb);
+});
+
+postman.setGlobalVariable('createIndex', (options, callback) => {
+    pm.sendRequest({
+        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}`,
+        method: 'PUT',
+        body: {
+            mode: 'raw',
+            raw: JSON.stringify({
+                settings: options.settings || {},
+                mappings: options.mappings || {}
+            })
+        }
+    }, (err, resp) => {
+        if (err) return callback(err);
+
+        let body = resp.json();
+
+        callback(null, body.acknowledged);
+    });
 });
 
 postman.setGlobalVariable('deleteIndex', (indexName, callback) => {
