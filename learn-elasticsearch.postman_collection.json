@@ -444,14 +444,6 @@
 					"response": []
 				},
 				{
-					"name": "mget",
-					"request": {
-						"method": "GET",
-						"header": []
-					},
-					"response": []
-				},
-				{
 					"name": "msearch",
 					"request": {
 						"method": "GET",
@@ -530,6 +522,107 @@
 						"description": "### bulk \nbulk 能同时执行多条命令\n- 部分命令报错不会影响另一部分命令的执行\n- 每条命令使用 \\n 分隔（最后一条命令也要使用 \\n 结尾）\n- 可以指定默认目标索引，没有 _index 参数的命令会使用默认目标索引\n\n官方文档：https://www.elastic.co/guide/en/elasticsearch/reference/7.17/docs-bulk.html"
 					},
 					"response": []
+				},
+				{
+					"name": "mget",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"let body = pm.response.json();",
+									"let indexs = ['test1', 'test2', 'test3', 'test4'];",
+									"",
+									"asyncSeries(",
+									"    indexs.map(index => cb => deleteIndex(index, cb)),",
+									"    (err, results) => {",
+									"        if (err) throw err;",
+									"",
+									"        pm.test('multi get successful', function() {",
+									"            // 验证获取默认索引文档",
+									"            pm.expect(body.docs[0].found).eq(true);",
+									"            pm.expect(body.docs[0]._source.id).eq(1);",
+									"            // 验证获取指定索引文档",
+									"            pm.expect(body.docs[1].found).eq(true);",
+									"            pm.expect(body.docs[1]._source.id).eq(1);",
+									"            // 验证获取指定字段",
+									"            pm.expect(body.docs[2].found).eq(true);",
+									"            pm.expect(body.docs[2]._source.id).eq(2);",
+									"            pm.expect(body.docs[2]._source.age).is.undefined;",
+									"            // 验证获取文档失败（文档不存在）",
+									"            pm.expect(body.docs[3].found).eq(false);",
+									"        });",
+									"    }",
+									");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"let docs = {",
+									"    \"test1\": {id: 1, name: \"zhangsan\", age: 18},",
+									"    \"test2\": {id: 1, date: '2022-09-21', count: 2},",
+									"    \"test3\": {id: 2, name: 'lisi', age: 29},",
+									"    \"test4\": {id: 2, date: '2022-09-23', count: 3}",
+									"};",
+									"",
+									"// 创建多个索引多条数据",
+									"asyncSeries(",
+									"    Object.entries(docs)",
+									"    .map(([k, v]) => ",
+									"        (cb) => createDocument({",
+									"            indexName: k,",
+									"            doc: v,",
+									"            id: v.id",
+									"        }, cb)",
+									"    ), ",
+									"    (err, res) => {",
+									"        if (err) throw err;",
+									"",
+									"        console.log('数据已创建');",
+									"    }",
+									");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"docs\": [\n        {\n            \"_id\": 1\n        },\n        {\n            \"_id\": 1,\n            \"_index\": \"test2\"\n        },\n        {\n            \"_id\": 2,\n            \"_index\": \"test3\",\n            \"_type\": \"_doc\",\n            \"_source\": [\"id\", \"name\"]\n        },\n        {\n            \"_id\": 3,\n            \"_index\": \"test4\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/test1/_mget/",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"test1",
+								"_mget",
+								""
+							]
+						},
+						"description": "### multi get\n\nmulti get 可以同时获取多条数据\n\n- 指定默认索引\n`GET /test/_mget`  \n- 使用 ids 查询指定 id 的数据  \n```\nGET /test/_mget\n{\n   \"ids\": [\"1\", \"2\"]\n}\n```\n- 使用 docs 获取指定文档\n    - 使用 _source 指定返回字段  \n    - 使用 _index 指定返回字段\n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/docs-multi-get.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/docs-multi-get.html)"
+					},
+					"response": []
 				}
 			],
 			"description": "演示如何文档的增删改查：\n\n- 增加(create document)  \n- index(index document)  \n- 更新(update document)  \n- 获取(get document)  \n- 删除(delete document)"
@@ -551,9 +644,9 @@
 					"// set default header",
 					"pm.request.headers.add({key: 'Content-type', value: 'application/json'});",
 					"",
-					"// set global function",
+					"// global functions",
 					"// see also: https://www.postman.com/postman/workspace/postman-answers/request/3407886-06011115-e3cf-4711-926c-55a417d530f1",
-					"postman.setGlobalVariable('asyncSeries', (tasks, cb = () => {}) => {",
+					"let asyncSeries = (tasks, cb = () => {}) => {",
 					"    let _series = function(tasks, cb, currOperation = 0, results = []) {",
 					"        // Bail-out condition",
 					"        if (currOperation === tasks.length) {",
@@ -577,9 +670,22 @@
 					"    }",
 					"",
 					"    return _series(tasks, cb);",
-					"});",
+					"};",
 					"",
-					"postman.setGlobalVariable('createIndex', (options, callback) => {",
+					"let deleteIndex = (indexName, callback) => {",
+					"   pm.sendRequest({",
+					"        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,",
+					"        method: 'DELETE'",
+					"    }, (err, resp) => {",
+					"        if (err) return callback(err);",
+					"",
+					"        let body = resp.json();",
+					"",
+					"        callback(null, body.acknowledged);",
+					"    });",
+					"};",
+					"",
+					"let createIndex = (options, callback) => {",
 					"    pm.sendRequest({",
 					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}`,",
 					"        method: 'PUT',",
@@ -597,24 +703,11 @@
 					"",
 					"        callback(null, body.acknowledged);",
 					"    });",
-					"});",
+					"};",
 					"",
-					"postman.setGlobalVariable('deleteIndex', (indexName, callback) => {",
-					"   pm.sendRequest({",
-					"        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,",
-					"        method: 'DELETE'",
-					"    }, (err, resp) => {",
-					"        if (err) return callback(err);",
-					"",
-					"        let body = resp.json();",
-					"",
-					"        callback(null, body.acknowledged);",
-					"    });",
-					"});",
-					"",
-					"postman.setGlobalVariable('createDocument', (options, callback) => {",
+					"let createDocument = (options, callback) => {",
 					"    pm.sendRequest({",
-					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id}`,",
+					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id ? options.id : ''}`,",
 					"        method: 'POST',",
 					"        header: {",
 					"            'Content-type': 'application/json'",
@@ -630,9 +723,9 @@
 					"",
 					"        callback(null, body.result === 'created');",
 					"    });",
-					"});",
+					"};",
 					"",
-					"postman.setGlobalVariable('getDocumentById', (options, callback) => {",
+					"let getDocumentById = (options, callback) => {",
 					"    pm.sendRequest({",
 					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id}`,",
 					"        method: 'GET',",
@@ -641,7 +734,14 @@
 					"",
 					"        callback(null, resp.json());",
 					"    });",
-					"});"
+					"};",
+					"",
+					"// set global function",
+					"postman.setGlobalVariable('asyncSeries', asyncSeries);",
+					"postman.setGlobalVariable('createIndex', createIndex);",
+					"postman.setGlobalVariable('deleteIndex', deleteIndex);",
+					"postman.setGlobalVariable('createDocument', createDocument);",
+					"postman.setGlobalVariable('getDocumentById', getDocumentById);"
 				]
 			}
 		},

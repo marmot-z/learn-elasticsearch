@@ -8,9 +8,9 @@ pm.collectionVariables.set('esVersion', elasticsearchVersion);
 // set default header
 pm.request.headers.add({key: 'Content-type', value: 'application/json'});
 
-// set global function
+// global functions
 // see also: https://www.postman.com/postman/workspace/postman-answers/request/3407886-06011115-e3cf-4711-926c-55a417d530f1
-postman.setGlobalVariable('asyncSeries', (tasks, cb = () => {}) => {
+let asyncSeries = (tasks, cb = () => {}) => {
     let _series = function(tasks, cb, currOperation = 0, results = []) {
         // Bail-out condition
         if (currOperation === tasks.length) {
@@ -34,9 +34,22 @@ postman.setGlobalVariable('asyncSeries', (tasks, cb = () => {}) => {
     }
 
     return _series(tasks, cb);
-});
+};
 
-postman.setGlobalVariable('createIndex', (options, callback) => {
+let deleteIndex = (indexName, callback) => {
+   pm.sendRequest({
+        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,
+        method: 'DELETE'
+    }, (err, resp) => {
+        if (err) return callback(err);
+
+        let body = resp.json();
+
+        callback(null, body.acknowledged);
+    });
+};
+
+let createIndex = (options, callback) => {
     pm.sendRequest({
         url: `${pm.collectionVariables.get('esHost')}/${options.indexName}`,
         method: 'PUT',
@@ -54,24 +67,11 @@ postman.setGlobalVariable('createIndex', (options, callback) => {
 
         callback(null, body.acknowledged);
     });
-});
+};
 
-postman.setGlobalVariable('deleteIndex', (indexName, callback) => {
-   pm.sendRequest({
-        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,
-        method: 'DELETE'
-    }, (err, resp) => {
-        if (err) return callback(err);
-
-        let body = resp.json();
-
-        callback(null, body.acknowledged);
-    });
-});
-
-postman.setGlobalVariable('createDocument', (options, callback) => {
+let createDocument = (options, callback) => {
     pm.sendRequest({
-        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id}`,
+        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id ? options.id : ''}`,
         method: 'POST',
         header: {
             'Content-type': 'application/json'
@@ -87,9 +87,9 @@ postman.setGlobalVariable('createDocument', (options, callback) => {
 
         callback(null, body.result === 'created');
     });
-});
+};
 
-postman.setGlobalVariable('getDocumentById', (options, callback) => {
+let getDocumentById = (options, callback) => {
     pm.sendRequest({
         url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id}`,
         method: 'GET',
@@ -98,4 +98,11 @@ postman.setGlobalVariable('getDocumentById', (options, callback) => {
 
         callback(null, resp.json());
     });
-});
+};
+
+// set global function
+postman.setGlobalVariable('asyncSeries', asyncSeries);
+postman.setGlobalVariable('createIndex', createIndex);
+postman.setGlobalVariable('deleteIndex', deleteIndex);
+postman.setGlobalVariable('createDocument', createDocument);
+postman.setGlobalVariable('getDocumentById', getDocumentById);
