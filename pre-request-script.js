@@ -68,6 +68,17 @@ let createIndex = (options, callback) => {
     });
 };
 
+let getIndex = (indexName, callback) => {
+    pm.sendRequest({
+        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,
+        method: 'GET'
+    }, (err, resp) => {
+        if (err) return callback(err);
+
+        callback(null, resp.json());
+    });
+};
+
 let createDocument = (options, callback) => {
     pm.sendRequest({
         url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id ? options.id : ''}`,
@@ -118,6 +129,7 @@ let loadDatas = (datas, callback, sleepmillis) => {
 // set global function
 postman.setGlobalVariable('asyncSeries', asyncSeries);
 postman.setGlobalVariable('createIndex', createIndex);
+postman.setGlobalVariable('getIndex', getIndex);
 postman.setGlobalVariable('deleteIndex', deleteIndex);
 postman.setGlobalVariable('createDocument', createDocument);
 postman.setGlobalVariable('getDocumentById', getDocumentById);

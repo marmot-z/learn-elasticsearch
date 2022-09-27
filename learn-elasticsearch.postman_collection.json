@@ -718,7 +718,80 @@
 					"response": []
 				}
 			],
-			"description": "演示如何文档的增删改查：\n\n- 增加(create document)  \n- index(index document)  \n- 更新(update document)  \n- 获取(get document)  \n- 删除(delete document)"
+			"description": "演示如何文档的增删改查：\n\n\\*   增加(create document)\n\\*   index(index document)\n\\*   更新(update document)\n\\*   获取(get document)\n\\*   删除(delete document)\n\\*   批量操作(bulk)\n\\*   批量获取(multi get)\n\\*   批量查询(multi search)"
+		},
+		{
+			"name": "index",
+			"item": [
+				{
+					"name": "create index",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let getIndex = eval(pm.globals.get(\"getIndex\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"let body = pm.response.json();",
+									"const indexName = 'my-index-000001';",
+									"",
+									"asyncSeries([",
+									"    cb => getIndex(indexName, cb),",
+									"    cb => deleteIndex(indexName, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    let indexInfo = resp[0];",
+									"",
+									"    pm.test('create index successful', () => {",
+									"        // 验证索引创建成功",
+									"        pm.expect(body.acknowledged).to.be.true;",
+									"",
+									"        // 验证索引 mappings 是否正确",
+									"        pm.expect(indexInfo[indexName].mappings.properties.id.type).eq('integer');",
+									"",
+									"        // 验证索引 settings 是否正确",
+									"        pm.expect(indexInfo[indexName].settings.index.number_of_shards).eq('1');",
+									"        pm.expect(indexInfo[indexName].settings.index.number_of_replicas).eq('2');",
+									"",
+									"        // 验证索引 alias 是否正确",
+									"        pm.expect(indexInfo[indexName].aliases['index01-middle']).to.be.exist;",
+									"        pm.expect(indexInfo[indexName].aliases['index01-middle'].filter.term.tags).eq('middle');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"settings\": {\n        \"index\": {\n            \"number_of_shards\": 1,\n            \"number_of_replicas\": 2\n        }\n    },\n    \"mappings\": {\n        \"properties\": {\n            \"id\": {\n                \"type\": \"integer\"\n            },\n            \"name\": {\n                \"type\": \"text\"\n            },\n            \"tags\": {\n                \"type\": \"keyword\"\n            }\n        }\n    },\n    \"aliases\": {\n        \"index01-middle\": {\n            \"filter\": {\n                \"term\": {\n                    \"tags\": \"middle\"\n                }\n            }\n        }\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/my-index-000001",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"my-index-000001"
+							]
+						},
+						"description": "### create index\n\n创建索引请求格式如下：\n\n```\nPUT /my-index-000001\n{\n  \"settings\": {\n    \"index\": {\n      \"number_of_shards\": 3,  \n      \"number_of_replicas\": 2 \n    }\n  },\n  \"mappings\": {\n    \"properties\": {\n      \"field1\": { \"type\": \"text\" }\n    }\n  }\n  \"aliases\": {\n    \"alias_1\": {},\n    \"alias_2\": {\n      \"filter\": {\n        \"term\": { \"user.id\": \"kimchy\" }\n      },\n      \"routing\": \"shard-1\"\n    }\n  }\n}\n\n```\n\n索引名称需符合以下要求：\n\n- 只能小写  \n- 不能包含右侧字符：, /, \\*, ?, \", <, >, |, (space character), ,, #  \n- 不能以 -,_,+ 符号起始  \n- 不能为 . 或者 ..  \n- 不能超过 255 字节  \n- 不能以 . 符号起始\n\n查询参数：\n\n- wait_for_active_shards 在发起请求前等待有效的分片数，可以为 all 或者\\[1, number_of_replicas + 1\\]  \n- master_timeout 连接到主节点的超时时间，默认为 30s  \n- timeout 响应超时时间\n\n请求体：\n\n- [aliases](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/aliases.html)\n- [mappings](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping.html)\n- [settings](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/index-modules.html#index-modules-settings)\n\n官方文档：https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-create-index.html"
+					},
+					"response": []
+				}
+			],
+			"description": "### index operations\n\n演示索引相关的操作:\n- 创建索引(create index)"
 		}
 	],
 	"event": [
@@ -797,6 +870,17 @@
 					"    });",
 					"};",
 					"",
+					"let getIndex = (indexName, callback) => {",
+					"    pm.sendRequest({",
+					"        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,",
+					"        method: 'GET'",
+					"    }, (err, resp) => {",
+					"        if (err) return callback(err);",
+					"",
+					"        callback(null, resp.json());",
+					"    });",
+					"};",
+					"",
 					"let createDocument = (options, callback) => {",
 					"    pm.sendRequest({",
 					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id ? options.id : ''}`,",
@@ -847,6 +931,7 @@
 					"// set global function",
 					"postman.setGlobalVariable('asyncSeries', asyncSeries);",
 					"postman.setGlobalVariable('createIndex', createIndex);",
+					"postman.setGlobalVariable('getIndex', getIndex);",
 					"postman.setGlobalVariable('deleteIndex', deleteIndex);",
 					"postman.setGlobalVariable('createDocument', createDocument);",
 					"postman.setGlobalVariable('getDocumentById', getDocumentById);",
