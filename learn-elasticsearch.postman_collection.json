@@ -789,6 +789,96 @@
 						"description": "### create index\n\n创建索引请求格式如下：\n\n```\nPUT /my-index-000001\n{\n  \"settings\": {\n    \"index\": {\n      \"number_of_shards\": 3,  \n      \"number_of_replicas\": 2 \n    }\n  },\n  \"mappings\": {\n    \"properties\": {\n      \"field1\": { \"type\": \"text\" }\n    }\n  }\n  \"aliases\": {\n    \"alias_1\": {},\n    \"alias_2\": {\n      \"filter\": {\n        \"term\": { \"user.id\": \"kimchy\" }\n      },\n      \"routing\": \"shard-1\"\n    }\n  }\n}\n\n```\n\n索引名称需符合以下要求：\n\n- 只能小写  \n- 不能包含右侧字符：, /, \\*, ?, \", <, >, |, (space character), ,, #  \n- 不能以 -,_,+ 符号起始  \n- 不能为 . 或者 ..  \n- 不能超过 255 字节  \n- 不能以 . 符号起始\n\n查询参数：\n\n- wait_for_active_shards 在发起请求前等待有效的分片数，可以为 all 或者\\[1, number_of_replicas + 1\\]  \n- master_timeout 连接到主节点的超时时间，默认为 30s  \n- timeout 响应超时时间\n\n请求体：\n\n- [aliases](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/aliases.html)\n- [mappings](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping.html)\n- [settings](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/index-modules.html#index-modules-settings)\n\n官方文档：https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-create-index.html"
 					},
 					"response": []
+				},
+				{
+					"name": "get index",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createIndex = eval(pm.globals.get(\"createIndex\"));",
+									"let options = {",
+									"    \"indexName\": \"my-index-000001\",",
+									"    \"settings\": {",
+									"        \"index\": {",
+									"            \"number_of_shards\": 1,",
+									"            \"number_of_replicas\": 2",
+									"        }",
+									"    },",
+									"    \"mappings\": {",
+									"        \"properties\": {",
+									"            \"id\": {",
+									"                \"type\": \"integer\"",
+									"            },",
+									"            \"name\": {",
+									"                \"type\": \"text\"",
+									"            },",
+									"            \"tags\": {",
+									"                \"type\": \"keyword\"",
+									"            }",
+									"        }",
+									"    },",
+									"    \"aliases\": {",
+									"        \"index01-middle\": {",
+									"            \"filter\": {",
+									"                \"term\": {",
+									"                    \"tags\": \"middle\"",
+									"                }",
+									"            }",
+									"        }",
+									"    }",
+									"};",
+									"",
+									"asyncSeries([",
+									"    cb => createIndex(options, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    resp[0] && console.log('索引已创建');",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"const indexName = 'my-index-000001';",
+									"let body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    cb => deleteIndex(indexName, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    pm.test('get index successful', () => {",
+									"        pm.expect(body[indexName]).to.be.exist;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{esHost}}/my-index-000001",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"my-index-000001"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"description": "### index operations\n\n演示索引相关的操作:\n- 创建索引(create index)"
@@ -851,15 +941,18 @@
 					"};",
 					"",
 					"let createIndex = (options, callback) => {",
+					"    let indexName = options.indexName;",
+					"    delete options.indexName;",
+					"",
 					"    pm.sendRequest({",
-					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}`,",
+					"        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,",
 					"        method: 'PUT',",
+					"        header: {",
+					"            'Content-Type': 'application/json'",
+					"        },",
 					"        body: {",
 					"            mode: 'raw',",
-					"            raw: JSON.stringify({",
-					"                settings: options.settings || {},",
-					"                mappings: options.mappings || {}",
-					"            })",
+					"            raw: JSON.stringify(options)",
 					"        }",
 					"    }, (err, resp) => {",
 					"        if (err) return callback(err);",
@@ -886,7 +979,7 @@
 					"        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id ? options.id : ''}`,",
 					"        method: 'POST',",
 					"        header: {",
-					"            'Content-type': 'application/json'",
+					"            'Content-Type': 'application/json'",
 					"        },",
 					"        body: {",
 					"            mode: 'raw',",

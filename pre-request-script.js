@@ -49,15 +49,18 @@ let deleteIndex = (indexName, callback) => {
 };
 
 let createIndex = (options, callback) => {
+    let indexName = options.indexName;
+    delete options.indexName;
+
     pm.sendRequest({
-        url: `${pm.collectionVariables.get('esHost')}/${options.indexName}`,
+        url: `${pm.collectionVariables.get('esHost')}/${indexName}`,
         method: 'PUT',
+        header: {
+            'Content-Type': 'application/json'
+        },
         body: {
             mode: 'raw',
-            raw: JSON.stringify({
-                settings: options.settings || {},
-                mappings: options.mappings || {}
-            })
+            raw: JSON.stringify(options)
         }
     }, (err, resp) => {
         if (err) return callback(err);
@@ -84,7 +87,7 @@ let createDocument = (options, callback) => {
         url: `${pm.collectionVariables.get('esHost')}/${options.indexName}/_doc/${options.id ? options.id : ''}`,
         method: 'POST',
         header: {
-            'Content-type': 'application/json'
+            'Content-Type': 'application/json'
         },
         body: {
             mode: 'raw',
