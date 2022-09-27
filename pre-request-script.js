@@ -27,8 +27,7 @@ let asyncSeries = (tasks, cb = () => {}) => {
             }
 
             results.push(res);
-
-            // Recursively call the next task in series till we're done executing all the operations
+            
             return _series(tasks, cb, currOperation + 1, results);
         });
     }
@@ -100,9 +99,26 @@ let getDocumentById = (options, callback) => {
     });
 };
 
+let loadDatas = (datas, callback, sleepmillis) => {
+    let tasks = Object.entries(datas)
+        .flatMap(([k, v]) => 
+            v.map(data => 
+                _cb => createDocument({indexName: k, doc: data}, _cb)
+            )
+        );
+
+    // 部分数据创建后需等待若干毫秒后才可以被查询到
+    if (sleepmillis && sleepmillis > 0) {
+        tasks.push(_cb => setTimeout(_cb, sleepmillis));
+    }
+
+    asyncSeries(tasks, callback);
+}
+
 // set global function
 postman.setGlobalVariable('asyncSeries', asyncSeries);
 postman.setGlobalVariable('createIndex', createIndex);
 postman.setGlobalVariable('deleteIndex', deleteIndex);
 postman.setGlobalVariable('createDocument', createDocument);
 postman.setGlobalVariable('getDocumentById', getDocumentById);
+postman.setGlobalVariable('loadDatas', loadDatas);

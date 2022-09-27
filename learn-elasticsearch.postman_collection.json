@@ -445,9 +445,102 @@
 				},
 				{
 					"name": "msearch",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"let loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+									"",
+									"let docs = {",
+									"    'test1': [",
+									"        {'id': 1, 'tag': 'blogging', 'content': 'we bought a house, so I was moving'},",
+									"        {'id': 2, 'tag': 'job', 'message': 'learning to get better at by job'},",
+									"        {'id': 3, 'tag': 'programming', 'message': 'I feel I should have at my job level'}",
+									"    ],",
+									"    'test2': [",
+									"        {id: 1, autor: 'john', comments: ['good', 'bad']},",
+									"        {id: 2, autor: 'tom', comments: ['pretty good', 'normal']},",
+									"    ]",
+									"};      ",
+									"",
+									"loadDatas(docs, (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    console.log('数据创建完毕');",
+									"    ",
+									"// 数据创建完后等待 1000 ms 再查询",
+									"}, 1000);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"let body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    cb => deleteIndex('test1', cb),",
+									"    cb => deleteIndex('test2', cb)",
+									"], (err, res) => {",
+									"    if (err) throw err;",
+									"",
+									"    pm.test('mulit search successful', () => {",
+									"        // 验证 test1 索引 term 精确查询成功",
+									"        pm.expect(body.responses[0].hits.hits[0]._source.id).eq(1);",
+									"        pm.expect(body.responses[0].hits.hits[0]._source.tag).eq('blogging');",
+									"",
+									"        // 验证 test1 索引 match 匹配查询成功",
+									"        pm.expect(body.responses[1].hits.hits[0]._source.id).eq(2);",
+									"        pm.expect(body.responses[1].hits.hits[0]._source.message.startsWith('learning')).to.be.true;",
+									"",
+									"        // 验证 test2 索引全部查询成功",
+									"        pm.expect(body.responses[2].hits.hits.length).eq(2);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
 					"request": {
 						"method": "GET",
-						"header": []
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-ndjson",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}\n{\"query\":{\"term\":{\"tag.keyword\":\"blogging\"}}}\n{}\n{\"query\":{\"match\":{\"message\":\"learning\"}}}\n{\"index\":\"test2\"}\n{\"query\":{\"match_all\":{}}}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/test1/_msearch",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"test1",
+								"_msearch"
+							]
+						},
+						"description": "### multi search\n\nmsearch 可以在一个请求中进行多个查询，其请求格式如下：\n```\nGET /_search\nheader\\n\nbody\\n\nheader\\n\nbody\\n\n```\n请求内容中每一行由换行符分隔（包括最后一行），请求头 `Content-type` 为 `application/x-ndjson`\n\n\n1.  target_index 是查询目标索引，当查询 header 为空则默认使用此索引。其支持使用通配符，也可以为空;\n2.  header 可以进行一些查询的配置，如：\n    -   index 指定查询索引\n    -   routing 指定路由\n    -   search_type 查询类型（使用本地还是全局的 term 和文档频率进行算分）\n    -   ...\n3.  body 记录查询参数：\n    -   aggregation 聚合方式\n    -   query 查询参数，同一般查询 DSL\n    -   from 分页起点\n    -   size 分页大小\n\n更多详情请参阅官方文档 [https://www.elastic.co/guide/en/elasticsearch/reference/7.17/search-multi-search.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/search-multi-search.html)"
 					},
 					"response": []
 				},
@@ -663,8 +756,7 @@
 					"            }",
 					"",
 					"            results.push(res);",
-					"",
-					"            // Recursively call the next task in series till we're done executing all the operations",
+					"            ",
 					"            return _series(tasks, cb, currOperation + 1, results);",
 					"        });",
 					"    }",
@@ -736,12 +828,29 @@
 					"    });",
 					"};",
 					"",
+					"let loadDatas = (datas, callback, sleepmillis) => {",
+					"    let tasks = Object.entries(datas)",
+					"        .flatMap(([k, v]) => ",
+					"            v.map(data => ",
+					"                _cb => createDocument({indexName: k, doc: data}, _cb)",
+					"            )",
+					"        );",
+					"",
+					"    // 部分数据创建后需等待若干毫秒后才可以被查询到",
+					"    if (sleepmillis && sleepmillis > 0) {",
+					"        tasks.push(_cb => setTimeout(_cb, sleepmillis));",
+					"    }",
+					"",
+					"    asyncSeries(tasks, callback);",
+					"}",
+					"",
 					"// set global function",
 					"postman.setGlobalVariable('asyncSeries', asyncSeries);",
 					"postman.setGlobalVariable('createIndex', createIndex);",
 					"postman.setGlobalVariable('deleteIndex', deleteIndex);",
 					"postman.setGlobalVariable('createDocument', createDocument);",
-					"postman.setGlobalVariable('getDocumentById', getDocumentById);"
+					"postman.setGlobalVariable('getDocumentById', getDocumentById);",
+					"postman.setGlobalVariable('loadDatas', loadDatas);"
 				]
 			}
 		},
