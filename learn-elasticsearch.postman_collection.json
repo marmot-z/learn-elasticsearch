@@ -947,6 +947,118 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "clone index",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+									"const options = {",
+									"    \"indexName\": \"my-index-000001\",",
+									"    \"settings\": {",
+									"        \"index\": {",
+									"            \"number_of_shards\": 1,",
+									"            \"number_of_replicas\": 2,",
+									"            \"blocks.write\": true",
+									"        }",
+									"    },",
+									"    \"mappings\": {",
+									"        \"properties\": {",
+									"            \"id\": {",
+									"                \"type\": \"integer\"",
+									"            },",
+									"            \"name\": {",
+									"                \"type\": \"text\"",
+									"            },",
+									"            \"tags\": {",
+									"                \"type\": \"keyword\"",
+									"            }",
+									"        }",
+									"    },",
+									"    \"aliases\": {",
+									"        \"index01-middle\": {",
+									"            \"filter\": {",
+									"                \"term\": {",
+									"                    \"tags\": \"middle\"",
+									"                }",
+									"            }",
+									"        }",
+									"    }",
+									"};",
+									"",
+									"asyncSeries([",
+									"    cb => createIndex(options, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    resp[0] && console.log('索引已创建');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"const getIndex = eval(pm.globals.get(\"getIndex\"));",
+									"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"const cloneIndexName = 'cloned-my-index-000001';",
+									"const body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    cb => getIndex(cloneIndexName, cb),",
+									"    cb => deleteIndex('my-index-000001', cb),",
+									"    cb => deleteIndex(cloneIndexName, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    let cloneIndexInfo = resp[0];",
+									"",
+									"    pm.test('clone index successful', () => {",
+									"        pm.expect(body.acknowledged).to.be.true;",
+									"        // 验证索引拷贝成功",
+									"        pm.expect(cloneIndexInfo[cloneIndexName]).to.be.exist;",
+									"        // 验证目标索引 aliases 创建成功",
+									"        pm.expect(cloneIndexInfo[cloneIndexName].aliases['clone-index01-high']).to.be.exist;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"settings\": {\n        \"index\": {\n            \"number_of_shards\": 1,\n            \"number_of_replicas\": 2\n        }\n    },\n    \"aliases\": {\n        \"clone-index01-high\": {\n            \"filter\": {\n                \"term\": {\n                    \"tags\": \"high\"\n                }\n            }\n        }\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/my-index-000001/_clone/cloned-my-index-000001",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"my-index-000001",
+								"_clone",
+								"cloned-my-index-000001"
+							]
+						},
+						"description": "### clone index\n\nclone index 可以拷贝已有索引生成新的索引\n\n#### 拷贝前提要求\n\n\\*   目标索引不存在\n\\*   目标索引和源索引分片数一致\n\\*   处理拷贝索引的节点有足够的磁盘空间完成已有索引的拷贝\n    \n\n#### 说明\n\n\\*   索引模板不会应用于目标索引\n\\*   目标索引不会拷贝源索引的元信息(metadata)\n\\*   拷贝会赋值绝大部分源索引配置到目标索引中，但 index.number_of_replicas 和 index.auto_expand_replicas 配置除外，可以在 clone 请求中指定此参数\n    \n\n#### 拷贝流程\n\n\\*   unassigned 各分片尚未分配\n\\*   initializing 主分片已分配\n\\*   active 主分片拷贝完成，es 将尝试拷贝分片副本和将主分片重定位到其他节点\n    \n\n可以使用 _cat recovery API 查看进度\n\n#### 请求参数：\n\n与 create index 参数类似，可以在请求体中指定 settings 和 aliases 参数，但不能指定 mapping 参数\n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-clone-index.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-clone-index.html)"
+					},
+					"response": []
 				}
 			],
 			"description": "### index operations\n\n演示索引相关的操作:\n\n- 创建索引(create index)\n- 获取索引(get index)\n- 删除索引(delete index)\n- 拷贝索引(clone index)\n- 关闭索引(close index)\n- 开启索引(open index)\n- 获取索引设置(get index setting)\n- 更新索引设置(update index setting)\n- 获取索引映射(get index mapping)\n- 更新索引映射(update index mapping)\n- 获取索引(多个)统计(get index stats)\n- 创建别名(create alias)\n- 获取别名(get alias)\n- 删除别名(delete alias)\n- 创建/更新索引模板(create or update index template)\n- 获取索引模板(get index template)\n- 删除索引模板(delete index template)\n- 分词器使用(analyze usage)"
