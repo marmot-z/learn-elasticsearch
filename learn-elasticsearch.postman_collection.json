@@ -879,9 +879,77 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "delete index",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"let createIndex = eval(pm.globals.get(\"createIndex\"));",
+									"let options = {",
+									"    \"indexName\": \"my-index-000001\"",
+									"};",
+									"",
+									"asyncSeries([",
+									"    cb => createIndex(options, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    resp[0] && console.log('索引已创建');",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"const getIndex = eval(pm.globals.get(\"getIndex\"));",
+									"const indexName = 'my-index-000001';",
+									"const body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    cb => getIndex(indexName, cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    let indexInfo = resp[0];",
+									"",
+									"    pm.test('delete index successful', () => {",
+									"        pm.expect(body.acknowledged).to.be.true;",
+									"        ",
+									"        // 验证索引已被删除",
+									"        pm.expect(indexInfo.status).eq(404);",
+									"        pm.expect(indexInfo.error.type).eq('index_not_found_exception');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{esHost}}/my-index-000001",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"my-index-000001"
+							]
+						}
+					},
+					"response": []
 				}
 			],
-			"description": "### index operations\n\n演示索引相关的操作:\n- 创建索引(create index)"
+			"description": "### index operations\n\n演示索引相关的操作:\n\n- 创建索引(create index)\n- 获取索引(get index)\n- 删除索引(delete index)\n- 拷贝索引(clone index)\n- 关闭索引(close index)\n- 开启索引(open index)\n- 获取索引设置(get index setting)\n- 更新索引设置(update index setting)\n- 获取索引映射(get index mapping)\n- 更新索引映射(update index mapping)\n- 获取索引(多个)统计(get index stats)\n- 创建别名(create alias)\n- 获取别名(get alias)\n- 删除别名(delete alias)\n- 创建/更新索引模板(create or update index template)\n- 获取索引模板(get index template)\n- 删除索引模板(delete index template)\n- 分词器使用(analyze usage)"
 		}
 	],
 	"event": [
@@ -1019,7 +1087,7 @@
 					"    }",
 					"",
 					"    asyncSeries(tasks, callback);",
-					"}",
+					"};",
 					"",
 					"// set global function",
 					"postman.setGlobalVariable('asyncSeries', asyncSeries);",

@@ -127,7 +127,7 @@ let loadDatas = (datas, callback, sleepmillis) => {
     }
 
     asyncSeries(tasks, callback);
-}
+};
 
 // set global function
 postman.setGlobalVariable('asyncSeries', asyncSeries);
