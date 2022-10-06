@@ -44,7 +44,12 @@ let deleteIndex = (indexName, callback) => {
 
         let body = resp.json();
 
-        callback(null, body.acknowledged);
+        callback(
+            body.acknowledged ? 
+                null : 
+                new Error(`${indexName} 索引删除失败`),
+            body.acknowledged
+        );
     });
 };
 
@@ -67,7 +72,12 @@ let createIndex = (options, callback) => {
 
         let body = resp.json();
 
-        callback(null, body.acknowledged);
+        callback(
+            body.acknowledged ? 
+                null : 
+                new Error(`${indexName} 索引创建失败`),
+            body.acknowledged
+        );
     });
 };
 
