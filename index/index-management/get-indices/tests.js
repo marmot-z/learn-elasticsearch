@@ -15,8 +15,6 @@ asyncSeries([
             .slice(1)
             .flatMap(row => row.split(/\s+/));
 
-    console.log(cols);
-
     pm.test('get indices successful', () => {
         pm.expect(cols).is.to.contains(indexName1);
         pm.expect(cols).is.to.contains(indexName2);
