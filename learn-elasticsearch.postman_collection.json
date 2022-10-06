@@ -718,7 +718,7 @@
 					"response": []
 				}
 			],
-			"description": "演示如何文档的增删改查：\n\n\\*   增加(create document)\n\\*   index(index document)\n\\*   更新(update document)\n\\*   获取(get document)\n\\*   删除(delete document)\n\\*   批量操作(bulk)\n\\*   批量获取(multi get)\n\\*   批量查询(multi search)"
+			"description": "演示如何文档的增删改查：\n\n- 增加(create document)  \n- index(index document)  \n- 更新(update document)  \n- 获取(get document)  \n- 删除(delete document)  \n- 批量操作(bulk)  \n- 批量获取(multi get)  \n- 批量查询(multi search)"
 		},
 		{
 			"name": "index",

@@ -120,7 +120,7 @@ function resolveFloder() {
 		fi
 	done
 
-	description=$(jq -r 'select(.description != null) | .description' <<< "$2")
+	description=$(jq -r 'select(.request.description != null) | .request.description' <<< "$2")
 	default_title=$(jq -r '.name' <<< "$2")
 
 	resolveDescription "$full_path" "$description" "$default_title"
