@@ -11,7 +11,7 @@ function resolveGlobal() {
 	done
 
 	jq -c '.item[]' $1 | while read -r item; do
-		resolveFloder "$item"
+		resolveFloder "." "$item"
 	done
 }
 
@@ -38,7 +38,6 @@ function resolvePrerequestTestsScript() {
 			echo "$script" > "$parent_path/pre-request-script.js"
 		fi
 	
-	# 如果为 test 创建 test.js 	
 	elif [ "$val" = "test" ]; then
 		createIfAbsent 1 "$parent_path/tests.js"
 
@@ -87,47 +86,68 @@ function createIfAbsent() {
 }
 
 # 解析文件夹
-# $1 floder json
+# $1 父级文件夹所在路径
+# $2 floder json
 function resolveFloder() {
-	folder_name=$(jq -r '.name' <<< "$1" | tr " " "-")
+	if [ -z "$2" -o "$2" = " " ]; then
+		return
+	fi
 
-	echo "处理 ./$folder_name 文件夹"
+	folder_name=$(jq -r '.name' <<< "$2" | tr " " "-")
+	full_path="$1/$folder_name"
 
-	createIfAbsent 0 "$folder_name"
+	echo "处理 $full_path 文件夹"
 
-	# 判断是否有 event 属性
-	jq -c 'select(.event != null) | .event[]' <<< "$1" | while read -r event; do
-		resolvePrerequestTestsScript "./$folder_name" "$event"
+	createIfAbsent 0 "$full_path"
+
+	jq -c 'select(.event != null) | .event[]' <<< "$2" | while read -r event; do
+		resolvePrerequestTestsScript "$full_path" "$event"
 	done
 
-	jq -c 'select(.item != null) | .item[]' <<< "$1" | while read -r item; do
-		resolveRequest "$folder_name" "$item"
+	jq -c 'select(.item != null) | .item[]' <<< "$2" | while read -r item; do
+		# 解析请求
+		resolveRequest "$full_path" "$item"
+
+		# 如果有子文件夹则递归解析文件夹
+		has_child_folder=$(jq 'has("item")' <<< "$item")
+
+		if [ "$has_child_folder" = true ]; then
+			child_folder_name=$(jq -r '.name' <<< "$item" | tr " " "-")
+
+			jq -c '.item[]' <<< "$item" | while read -r sub_item; do
+				resolveFloder "$full_path/$child_folder_name" "$sub_item"
+			done
+		fi
 	done
 
-	description=$(jq -r 'select(.description != null) | .description' <<< "$1")
-	default_title=$(jq -r '.name' <<< "$1")
+	description=$(jq -r 'select(.description != null) | .description' <<< "$2")
+	default_title=$(jq -r '.name' <<< "$2")
 
-	resolveDescription "./$folder_name" "$description" "$default_title"
+	resolveDescription "$full_path" "$description" "$default_title"
 }
 
 # 解析请求
-# $1 文件夹名称
+# $1 floder name
 # $2 request json
 function resolveRequest() {
+	if [ -z "$2" -o "$2" = " " ]; then
+		return
+	fi
+
 	request_name=$(jq -r '.name' <<< "$2" | tr " " "-")
 
-	echo "处理 ./$1/$request_name 文件夹"
+	echo "处理 $1/$request_name 文件夹"
 
-	createIfAbsent 0 "./$1/$request_name"
+	createIfAbsent 0 "$1/$request_name"
 
 	jq -c 'select(.event != null) | .event[]' <<< "$2" | while read -r event; do
-		resolvePrerequestTestsScript "./$1/$request_name" "$event"
+		resolvePrerequestTestsScript "$1/$request_name" "$event"
 	done
 
 	description=$(jq -r 'select(.request.description != null) | .request.description' <<< "$2")
 	default_title=$(jq -r '.name' <<< "$2")
 
-	resolveDescription "./$1/$request_name" "$description" "$default_title"
+	resolveDescription "$1/$request_name" "$description" "$default_title"
 }
 
 resolveGlobal learn-elasticsearch.postman_collection.json
