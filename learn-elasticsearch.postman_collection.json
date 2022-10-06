@@ -1197,6 +1197,82 @@
 								"description": "### close index\n```\nPOST /my-index-000001/_close\n```\n你可以使用 close API 关闭索引，其会阻塞索引上的读写操作，以及不允许任何可以在正常状态索引上的操作。关闭的索引不会维护内部数据结构用于保存和查询文档，其会降低集群的消耗。\n当启动/关闭索引时，分片会执行恢复流程，以确保集群始终保留足够的分片副本。\n关闭索引会消耗大量的磁盘空间，可能会引起一些问题。\n\n官方文档：https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-close.html"
 							},
 							"response": []
+						},
+						{
+							"name": "get indices",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+											"",
+											"asyncSeries([",
+											"    cb => createIndex({indexName: 'my-index-000001'}, cb),",
+											"    cb => createIndex({indexName: 'my-index-000002'}, cb),",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const body = pm.response.text();",
+											"const indexName1 = 'my-index-000001';",
+											"const indexName2 = 'my-index-000002';",
+											"",
+											"asyncSeries([",
+											"    cb => deleteIndex(indexName1, cb),",
+											"    cb => deleteIndex(indexName2, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    let cols = body.split('\\n')",
+											"            // skip head",
+											"            .slice(1)",
+											"            .flatMap(row => row.split(/\\s+/));",
+											"",
+											"    console.log(cols);",
+											"",
+											"    pm.test('get indices successful', () => {",
+											"        pm.expect(cols).is.to.contains(indexName1);",
+											"        pm.expect(cols).is.to.contains(indexName2);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{esHost}}/_cat/indices?v",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"_cat",
+										"indices"
+									],
+									"query": [
+										{
+											"key": "v",
+											"value": null
+										}
+									]
+								},
+								"description": "### cat indices \n显示所有索引信息列表\n\n更多 cat API 用法参考官方文档：https://www.elastic.co/guide/en/elasticsearch/reference/7.17/cat.html"
+							},
+							"response": []
 						}
 					],
 					"event": [
@@ -1307,6 +1383,7 @@
 					"",
 					"let createIndex = (options, callback) => {",
 					"    let indexName = options.indexName;",
+					"    ",
 					"    delete options.indexName;",
 					"",
 					"    pm.sendRequest({",

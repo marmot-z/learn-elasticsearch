@@ -55,6 +55,7 @@ let deleteIndex = (indexName, callback) => {
 
 let createIndex = (options, callback) => {
     let indexName = options.indexName;
+    
     delete options.indexName;
 
     pm.sendRequest({
