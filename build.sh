@@ -74,12 +74,12 @@ function resolveDescription() {
 function createIfAbsent() {
 	if [ $1 -eq 0 ]; then
 		if [ ! -d "$2" ]; then
-			echo "$2 文件夹不存在，创建"
+			echo "创建 $2（文件夹不存在）"
 			mkdir "$2"
 		fi
 	elif [ $1 -eq 1 ]; then
 		if [ ! -f "$2" ]; then
-			echo "$2 文件不存在，创建"
+			echo "创建 $2 （文件不存在）"
 			touch "$2"
 		fi
 	fi
@@ -94,7 +94,7 @@ function resolveFloder() {
 	fi
 
 	folder_name=$(jq -r '.name' <<< "$2" | tr " " "-")
-	full_path="$1/$folder_name"
+	local full_path="$1/$folder_name"
 
 	echo "处理 $full_path 文件夹"
 
