@@ -823,7 +823,19 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"console.log('hello');"
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+											"const closeIndex = eval(pm.globals.get(\"closeIndex\"));",
+											"const indexName = 'my-index-000001';",
+											"",
+											"asyncSeries([",
+											"    // 创建索引",
+											"    cb => createIndex({indexName}, cb),",
+											"    // 关闭索引",
+											"    cb => closeIndex(indexName, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -832,25 +844,44 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"console.log('world');"
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const getIndexStatus = eval(pm.globals.get(\"getIndexStatus\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const indexName = 'my-index-000001';",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    cb => getIndexStatus(indexName, cb),",
+											"    cb => deleteIndex(indexName, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    pm.test('open index successful', () => {",
+											"        pm.expect(body.acknowledged).is.to.true;",
+											"",
+											"        // 验证索引状态为 open",
+											"        pm.expect(resp[0]).is.to.contain('open');",
+											"    });",
+											"});"
 										],
 										"type": "text/javascript"
 									}
 								}
 							],
 							"request": {
-								"method": "GET",
+								"method": "POST",
 								"header": [],
 								"url": {
-									"raw": "{{esHost}}/test1/_open",
+									"raw": "{{esHost}}/my-index-000001/_open",
 									"host": [
 										"{{esHost}}"
 									],
 									"path": [
-										"test1",
+										"my-index-000001",
 										"_open"
 									]
-								}
+								},
+								"description": "### open index\n对已关闭的索引进行重新开启\n\n官方文档：https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-open-close.html"
 							},
 							"response": []
 						},
@@ -1194,7 +1225,7 @@
 										"_close"
 									]
 								},
-								"description": "### close index\n\n```\nPOST /my-index-000001/_close\n\n```\n\n你可以使用 close API 关闭索引，其会阻塞索引上的读写操作，以及不允许任何可以在正常状态索引上的操作。关闭的索引不会维护内部数据结构用于保存和查询文档，其会降低集群的消耗。使用通配符或者 _all 参数关闭多个索引。  \n当启动/关闭索引时，分片会执行恢复流程，以确保集群始终保留足够的分片副本。  \n关闭索引会消耗大量的磁盘空间，可能会在部署环境中引发一些问题。  \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-close.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-close.html)"
+								"description": "### close index\n\n```\nPOST /my-index-000001/_close\n\n```\n\n你可以使用 close API 关闭索引，其会阻塞索引上的读写操作，以及不允许任何可以在正常状态索引上的操作。关闭的索引不会维护内部数据结构用于保存和查询文档，其会降低集群的消耗。使用通配符或者 _all 参数关闭多个索引。对已经关闭的索引执行查询等操作将会抛出 index_closed_exception 异常。     \n当启动/关闭索引时，分片会执行恢复流程，以确保集群始终保留足够的分片副本。  \n关闭索引会消耗大量的磁盘空间，可能会在部署环境中引发一些问题。\n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-close.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-close.html)"
 							},
 							"response": []
 						},
@@ -1291,7 +1322,21 @@
 									"};",
 									"",
 									"let closeIndex = (indexName, callback) => {",
+									"    pm.sendRequest({",
+									"        url: `${pm.collectionVariables.get('esHost')}/${indexName}/_close`,",
+									"        method: 'POST',",
+									"    }, (err, resp) => {",
+									"        if (err) return callback(err);",
 									"",
+									"        let body = resp.json();",
+									"",
+									"        callback(",
+									"            body.acknowledged ? ",
+									"                null:",
+									"                new Error(`${indexName} 关闭失败`), ",
+									"            body.acknowledged",
+									"        );",
+									"    });",
 									"};",
 									"",
 									"postman.setGlobalVariable('getIndexStatus', getIndexStatus);",
