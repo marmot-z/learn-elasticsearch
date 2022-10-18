@@ -120,8 +120,14 @@ function resolveFloder() {
 		fi
 	done
 
+	# request readme
 	description=$(jq -r 'select(.request.description != null) | .request.description' <<< "$2")
 	default_title=$(jq -r '.name' <<< "$2")
+
+	# if request readme not exists, try get floder readme
+	if [ -z "$description" -o "$description" = " " ]; then
+		description=$(jq -r 'select(.description != null) | .description' <<< "$2")
+	fi
 
 	resolveDescription "$full_path" "$description" "$default_title"
 }
