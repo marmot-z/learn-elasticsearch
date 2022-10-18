@@ -1360,14 +1360,209 @@
 					"item": [
 						{
 							"name": "update mapping",
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": ""
+							"item": [
+								{
+									"name": "add field",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+													"const options = {",
+													"    \"indexName\": \"my-index-000001\"",
+													"};",
+													"",
+													"asyncSeries([",
+													"    // 创建一个没有 mappings、settings 的索引",
+													"    cb => createIndex(options, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const getIndex = eval(pm.globals.get(\"getIndex\"));",
+													"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+													"const indexName = 'my-index-000001';",
+													"const body = pm.response.json();",
+													"",
+													"asyncSeries([",
+													"    cb => getIndex(indexName, cb),",
+													"    cb => deleteIndex(indexName, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"",
+													"    let indexInfo = resp[0];",
+													"",
+													"    pm.test('add field successful', () => {",
+													"        // 验证字段添加成功",
+													"        pm.expect(body.acknowledged).to.be.true;",
+													"        pm.expect(indexInfo[indexName].mappings.properties.title.type).eq('text');",
+													"    });",
+													"})"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"properties\": {\n        \"title\": {\n            \"type\": \"text\"\n        }\n    }\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/my-index-000001/_mapping",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"my-index-000001",
+												"_mapping"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "add properties to existing field",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+													"const options = {",
+													"    \"indexName\": \"my-index-000001\",",
+													"    \"mappings\": {",
+													"        \"properties\": {",
+													"            \"name\": {",
+													"                \"properties\": {",
+													"                    \"first\": {",
+													"                        \"type\": \"text\"",
+													"                    }",
+													"                }",
+													"            }",
+													"        }",
+													"    }",
+													"};",
+													"",
+													"asyncSeries([",
+													"    // 创建 name 多字段类型的索引",
+													"    cb => createIndex(options, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const getIndex = eval(pm.globals.get(\"getIndex\"));",
+													"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+													"const indexName = 'my-index-000001';",
+													"const body = pm.response.json();",
+													"",
+													"asyncSeries([",
+													"    cb => getIndex(indexName, cb),",
+													"    cb => deleteIndex(indexName, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"",
+													"    let indexInfo = resp[0];",
+													"",
+													"    pm.test('add properties to existing field successful', () => {",
+													"        pm.expect(body.acknowledged).to.be.true;",
+													"",
+													"        let nameProps = indexInfo[indexName].mappings.properties.name.properties;",
+													"",
+													"        pm.expect(nameProps.first.type).eq('text');",
+													"        pm.expect(nameProps.last.type).eq('integer');",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"properties\": {\n    \"name\": {\n      \"properties\": {\n        \"last\": {\n          \"type\": \"integer\"\n        }\n      }\n    }\n  }\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/my-index-000001/_mapping",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"my-index-000001",
+												"_mapping"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "add multi fields to existing field",
+									"request": {
+										"method": "GET",
+										"header": []
+									},
+									"response": []
+								},
+								{
+									"name": "change mapping parameters for existing field",
+									"request": {
+										"method": "GET",
+										"header": []
+									},
+									"response": []
+								},
+								{
+									"name": "change mapping of existing field",
+									"request": {
+										"method": "GET",
+										"header": []
+									},
+									"response": []
+								},
+								{
+									"name": "rename existing field",
+									"request": {
+										"method": "GET",
+										"header": []
+									},
+									"response": []
 								}
-							},
-							"response": []
+							],
+							"description": "### update index mapping\n\n```\nPUT //_mapping\n\n```\n\n更新指定索引的 mapping， 支持逗号分隔的多个索引名称，或使用 \\* 和 _all 通配符应用于所有索引上\n\n**请求参数：**\n\n- allow_no_indices  \n    是否允许索引不存在。如果为 false，且索引不存在或者关闭，则请求返回错误。默认为 true\n- expend_wildcards  \n    通配符模式可以匹配的索引类型，支持逗号分隔的多个类型，默认为 open\n    - all  \n        匹配全部索引（包括隐藏的索引）\n    - open  \n        匹配开启的，未隐藏的索引\n    - closed  \n        匹配关闭的，为隐藏的索引\n    - hidden  \n        匹配隐藏的索引\n    - none  \n        不匹配任何索引\n- include_type_name  \n    期待 mapping body 里有 mapping type，默认为 false\n- ignore_unavailable  \n    如果为 false 且目标索引不存在或关闭则请求返回错误，默认为 false\n- master_timeout  \n    连接到主节点的等待时间，超过改时间则请求失败并返回异常，默认为 30s\n- timeout  \n    响应等待时长，超时则请求失败并返回异常，默认为 30s\n- write_index_only  \n    如果为 true 则只会对可写索引进行 mapping 更新，默认为 false\n    \n**请求体：**\nproperties 参数可以包括以下内容：\n- 字段名称\n- [字段类型](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping-types.html)\n- [mapping 参数](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping-params.html)\n\n具体的更新操作如下：\n\n- [新增索引字段](./add-field)\n- [在已存在字段上新增配置](./add-properties-to-existing-field)\n- [在已存在字段上新增多字段](./add-multi-fields-to-existing-field)\n- [修改已存在字段的参数](./change-mapping-parameters-for-existing-field)\n- [修改已存在字段的 mapping](./change-mapping-of-existing-field)\n- [重命名已存在字段](./rename-existing-field)\n    \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html)"
 						},
 						{
 							"name": "get mapping",
