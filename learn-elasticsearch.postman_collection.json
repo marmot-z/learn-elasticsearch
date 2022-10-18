@@ -1414,7 +1414,7 @@
 										}
 									],
 									"request": {
-										"method": "POST",
+										"method": "PUT",
 										"header": [],
 										"body": {
 											"mode": "raw",
@@ -1505,7 +1505,7 @@
 										}
 									],
 									"request": {
-										"method": "POST",
+										"method": "PUT",
 										"header": [],
 										"body": {
 											"mode": "raw",
@@ -1531,9 +1531,89 @@
 								},
 								{
 									"name": "add multi fields to existing field",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+													"const options = {",
+													"    \"indexName\": \"my-index-000001\",",
+													"    \"mappings\": {",
+													"        \"properties\": {",
+													"            \"city\": {",
+													"                \"type\": \"text\"",
+													"            }",
+													"        }",
+													"    }",
+													"};",
+													"",
+													"asyncSeries([",
+													"    // 创建 name 多字段类型的索引",
+													"    cb => createIndex(options, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const getIndex = eval(pm.globals.get(\"getIndex\"));",
+													"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+													"const indexName = 'my-index-000001';",
+													"const body = pm.response.json();",
+													"",
+													"asyncSeries([",
+													"    cb => getIndex(indexName, cb),",
+													"    cb => deleteIndex(indexName, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"",
+													"    let indexInfo = resp[0];",
+													"",
+													"    pm.test('add multi fields to existing field successful', () => {",
+													"        pm.expect(body.acknowledged).to.be.true;",
+													"",
+													"        let cityProps = indexInfo[indexName].mappings.properties.city;",
+													"        ",
+													"        pm.expect(cityProps.type).eq('text');",
+													"        pm.expect(cityProps.fields.raw.type).eq('keyword');",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
 									"request": {
-										"method": "GET",
-										"header": []
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"properties\": {\n    \"city\": {\n      \"type\": \"text\",\n      \"fields\": {\n        \"raw\": {\n          \"type\": \"keyword\"\n        }\n      }\n    }\n  }\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/my-index-000001/_mapping",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"my-index-000001",
+												"_mapping"
+											]
+										},
+										"description": "### field properties vs multi field\n\nfield properties 和 multi field 的区别：\n\n- 当 field 类型为 object 或 nested 类型时，可以通过 properties 属性指定子字段（object field 和 multi field 的区别请阅读 [nested field vs object field](../../examples/nested-field-vs-object-field)章节\n- 当同一个字段出于不同目的需要不同的使用方式，则可以使用 multi field，比如为字段设置 text 类型，可以方便全文搜索，扩大命中概率；为字段再设置 keyword 类型，可以方便排序和聚合。不同字段类型还可以使用不同的分词器（analyzer）"
 									},
 									"response": []
 								},
@@ -1562,7 +1642,7 @@
 									"response": []
 								}
 							],
-							"description": "### update index mapping\n\n```\nPUT //_mapping\n\n```\n\n更新指定索引的 mapping， 支持逗号分隔的多个索引名称，或使用 \\* 和 _all 通配符应用于所有索引上\n\n**请求参数：**\n\n- allow_no_indices  \n    是否允许索引不存在。如果为 false，且索引不存在或者关闭，则请求返回错误。默认为 true\n- expend_wildcards  \n    通配符模式可以匹配的索引类型，支持逗号分隔的多个类型，默认为 open\n    - all  \n        匹配全部索引（包括隐藏的索引）\n    - open  \n        匹配开启的，未隐藏的索引\n    - closed  \n        匹配关闭的，为隐藏的索引\n    - hidden  \n        匹配隐藏的索引\n    - none  \n        不匹配任何索引\n- include_type_name  \n    期待 mapping body 里有 mapping type，默认为 false\n- ignore_unavailable  \n    如果为 false 且目标索引不存在或关闭则请求返回错误，默认为 false\n- master_timeout  \n    连接到主节点的等待时间，超过改时间则请求失败并返回异常，默认为 30s\n- timeout  \n    响应等待时长，超时则请求失败并返回异常，默认为 30s\n- write_index_only  \n    如果为 true 则只会对可写索引进行 mapping 更新，默认为 false\n    \n**请求体：**\nproperties 参数可以包括以下内容：\n- 字段名称\n- [字段类型](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping-types.html)\n- [mapping 参数](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping-params.html)\n\n具体的更新操作如下：\n\n- [新增索引字段](./add-field)\n- [在已存在字段上新增配置](./add-properties-to-existing-field)\n- [在已存在字段上新增多字段](./add-multi-fields-to-existing-field)\n- [修改已存在字段的参数](./change-mapping-parameters-for-existing-field)\n- [修改已存在字段的 mapping](./change-mapping-of-existing-field)\n- [重命名已存在字段](./rename-existing-field)\n    \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html)"
+							"description": "### update index mapping\n\n```\nPUT /<target>/_mapping\n\n```\n\n更新指定索引的 mapping， <target> 支持逗号分隔的多个索引名称，或使用 \\* 和 _all 通配符应用于所有索引上\n\n**请求参数：**\n\n- allow_no_indices  \n    是否允许索引不存在。如果为 false，且索引不存在或者关闭，则请求返回错误。默认为 true\n- expend_wildcards  \n    通配符模式可以匹配的索引类型，支持逗号分隔的多个类型，默认为 open\n    - all  \n        匹配全部索引（包括隐藏的索引）\n    - open  \n        匹配开启的，未隐藏的索引\n    - closed  \n        匹配关闭的，为隐藏的索引\n    - hidden  \n        匹配隐藏的索引\n    - none  \n        不匹配任何索引\n- include_type_name  \n    期待 mapping body 里有 mapping type，默认为 false\n- ignore_unavailable  \n    如果为 false 且目标索引不存在或关闭则请求返回错误，默认为 false\n- master_timeout  \n    连接到主节点的等待时间，超过改时间则请求失败并返回异常，默认为 30s\n- timeout  \n    响应等待时长，超时则请求失败并返回异常，默认为 30s\n- write_index_only  \n    如果为 true 则只会对可写索引进行 mapping 更新，默认为 false\n    \n\n**请求体：**  \nproperties 参数可以包括以下内容：\n\n- 字段名称\n- [字段类型](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping-types.html)\n- [mapping 参数](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/mapping-params.html)\n    \n\n具体的更新操作如下：\n\n- [新增索引字段](./add-field)\n- [在已存在字段上新增配置](./add-properties-to-existing-field)\n- [在已存在字段上新增多字段](./add-multi-fields-to-existing-field)\n- [修改已存在字段的参数](./change-mapping-parameters-for-existing-field)\n- [修改已存在字段的 mapping](./change-mapping-of-existing-field)\n- [重命名已存在字段](./rename-existing-field)\n    \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html)"
 						},
 						{
 							"name": "get mapping",
@@ -1675,6 +1755,219 @@
 				}
 			],
 			"description": "### index operations\n\n演示索引相关的操作:\n\n- 创建索引(create index)\n- 获取索引(get index)\n- 删除索引(delete index)\n- 拷贝索引(clone index)\n- 关闭索引(close index)\n- 开启索引(open index)\n- 获取索引设置(get index setting)\n- 更新索引设置(update index setting)\n- 获取索引映射(get index mapping)\n- 更新索引映射(update index mapping)\n- 获取索引(多个)统计(get index stats)\n- 创建别名(create alias)\n- 获取别名(get alias)\n- 删除别名(delete alias)\n- 创建/更新索引模板(create or update index template)\n- 获取索引模板(get index template)\n- 删除索引模板(delete index template)\n- 分词器使用(analyze usage)"
+		},
+		{
+			"name": "examples",
+			"item": [
+				{
+					"name": "nested field vs object field",
+					"item": [
+						{
+							"name": "nested field",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+											"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+											"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+											"const indexOptions = {",
+											"    \"indexName\": \"books_test\",",
+											"    \"mappings\": {",
+											"        \"properties\": {",
+											"            \"authors\": {",
+											"                \"type\": \"nested\"",
+											"            }",
+											"        }",
+											"    }",
+											"};",
+											"const docs = {",
+											"    'books_test': [",
+											"        {",
+											"            \"id\": 1,",
+											"            \"name\": \"An Awesome Book\",",
+											"            \"tags\": [{ \"name\": \"best-seller\" }, { \"name\": \"summer-sale\" }],",
+											"            \"authors\": [",
+											"                { \"name\": \"Gustavo Llermaly\", \"age\": \"32\", \"country\": \"Chile\" },",
+											"                { \"name\": \"John Doe\", \"age\": \"20\", \"country\": \"USA\" }",
+											"            ]",
+											"        },",
+											"        {",
+											"            \"id\": 2,",
+											"            \"name\": \"A Regular Book\",",
+											"            \"tags\": [{ \"name\": \"free-shipping\" }, { \"name\": \"summer-sale\" }],",
+											"            \"authors\": [",
+											"                { \"name\": \"Regular author\", \"age\": \"40\", \"country\": \"USA\" },",
+											"                { \"name\": \"John Doe\", \"age\": \"20\", \"country\": \"USA\" }",
+											"            ]",
+											"        }",
+											"    ]",
+											"};      ",
+											"",
+											"asyncSeries([",
+											"    // 明确指定 author 字段为 nested 类型，防止 es 自动判别为 object 类型",
+											"    cb => createIndex(indexOptions, cb),",
+											"    cb => loadDatas(docs, cb, 1000)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    cb => deleteIndex('books_test', cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    pm.test('nested field search success', () => {",
+											"        // nested 类型查询结果符合预期，返回零条",
+											"        pm.expect(body.hits.hits.length).eq(0);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"bool\": {\n      \"filter\": [\n        {\n          \"term\": {\n            \"authors.country.keyword\": \"Chile\"\n          }\n        },\n        {\n          \"range\": {\n            \"authors.age\": {\n              \"lte\": 30\n            }\n          }\n        }\n      ]\n    }\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/books_test/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"books_test",
+										"_search"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "object field",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+											"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+											"const docs = {",
+											"    'books_test': [",
+											"        {",
+											"            \"id\": 1,",
+											"            \"name\": \"An Awesome Book\",",
+											"            \"tags\": [{ \"name\": \"best-seller\" }, { \"name\": \"summer-sale\" }],",
+											"            \"authors\": [",
+											"                { \"name\": \"Gustavo Llermaly\", \"age\": \"32\", \"country\": \"Chile\" },",
+											"                { \"name\": \"John Doe\", \"age\": \"20\", \"country\": \"USA\" }",
+											"            ]",
+											"        },",
+											"        {",
+											"            \"id\": 2,",
+											"            \"name\": \"A Regular Book\",",
+											"            \"tags\": [{ \"name\": \"free-shipping\" }, { \"name\": \"summer-sale\" }],",
+											"            \"authors\": [",
+											"                { \"name\": \"Regular author\", \"age\": \"40\", \"country\": \"USA\" },",
+											"                { \"name\": \"John Doe\", \"age\": \"20\", \"country\": \"USA\" }",
+											"            ]",
+											"        }",
+											"    ]",
+											"};      ",
+											"",
+											"// 往索引上插入两条嵌套对象类型的文档",
+											"loadDatas(docs, (err, resp) => {",
+											"    if (err) throw err;",
+											"    ",
+											"// 数据创建完后等待 1000 ms 再查询",
+											"}, 1000);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    cb => deleteIndex('books_test', cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    // 此测试用例会验证报错",
+											"    pm.test('object field search fail', () => {",
+											"        // 期待查询结果为零条，实际大于零条",
+											"        pm.expect(body.hits.hits.length).eq(0);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"bool\": {\n      \"filter\": [\n        {\n          \"term\": {\n            \"authors.country.keyword\": \"Chile\"\n          }\n        },\n        {\n          \"range\": {\n            \"authors.age\": {\n              \"lte\": 30\n            }\n          }\n        }\n      ]\n    }\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/books_test/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"books_test",
+										"_search"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "### field: nested vs object\n\n[nested field](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/nested.html) 和 [object field](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/object.html) 类型字段看起来都是对象类型的字段，那它们有什么区别？应该怎么选择？\n\nes 在存储的时候会将文档中的 object 类型的字段进行展开，比如我们往索引中插入以下数据：\n```json\nPUT books_test/_doc/1\n{\n  \"name\": \"An Awesome Book\",\n  \"tags\": [{ \"name\": \"best-seller\" }, { \"name\": \"summer-sale\" }],\n  \"authors\": [\n    { \"name\": \"Gustavo Llermaly\", \"age\": \"32\", \"country\": \"Chile\" },\n    { \"name\": \"John Doe\", \"age\": \"20\", \"country\": \"USA\" }\n  ]\n}\n\nPUT books_test/_doc/2\n{\n  \"name\": \"A Regular Book\",\n  \"tags\": [{ \"name\": \"free-shipping\" }, { \"name\": \"summer-sale\" }],\n  \"authors\": [\n    { \"name\": \"Regular author\", \"age\": \"40\", \"country\": \"USA\" },\n    { \"name\": \"John Doe\", \"age\": \"20\", \"country\": \"USA\" }\n  ]\n}\n```\n其在 es 中实际存储的结构类似于：\n```json\n{\n  \"name\": \"An Awesome Book\",\n  \"tags.name\": [\"best-seller\", \"summer-sale\"],\n  \"authors.name\": [\"Gustavo Llermaly\", \"John Doe\"],\n  \"authors.age\": [32, 20],\n  \"authors.country\": [\"Chile, USA\"]\n}\n```\n在一些查询中这会出现问题，如果我们查询 country 为 chile 且 age 小于 30 的记录，期待返回零条记录，但实际会返回两条记录。这会导致一些问题，该如何解决这个问题？\n\n改用 nested 类型的字段，其是一种特殊对象类型的字段，es 会将 nested 类型的字段单独存储为一个文档，并与对应的外部文档进行关联，因此我们可以对其正确进行查询。\n\n**注意：**\n- 每个索引最多有 50 个 nested 类型的字段，可以通过 index.mapping.nested_fields.limit 参数调整\n- 每个文档最多有 1000 个 nested 类型的对象，可以通过 index.mapping.nested_objects.limit 参数调整\n- 过多的 nested 类型字段会导致性能下降，在需要的时候再使用 nested 类型字段\n- 使用 [flattened field type](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/flattened.html) 类型字段将内部对象的所有关键词类型字段映射到单个字段上\n\n参考文档：[elasticsearch-nested-field-object-field](https://opster.com/guides/elasticsearch/data-architecture/elasticsearch-nested-field-object-field/)"
+				}
+			],
+			"description": "### examples\n\n通过一些示例来阐明一些原理"
 		}
 	],
 	"event": [
