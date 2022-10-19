@@ -49,7 +49,8 @@ properties 参数可以包括以下内容：
 - [在已存在字段上新增配置](./add-properties-to-existing-field)
 - [在已存在字段上新增多字段](./add-multi-fields-to-existing-field)
 - [修改已存在字段的参数](./change-mapping-parameters-for-existing-field)
-- [修改已存在字段的 mapping](./change-mapping-of-existing-field)
+- 修改已存在字段的 mapping
+因为数据已被索引，所以修改已存在的字段类型是无效的。但可以用新的 mapping 创建新索引，然后将数据重索引(reindex)到新索引上，见[原文](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-put-mapping.html#updating-field-mappings)
 - [重命名已存在字段](./rename-existing-field)
     
 
