@@ -124,6 +124,24 @@ let getDocumentById = (options, callback) => {
     });
 };
 
+let searchDocument = (indexName, dsl, callback) => {
+    pm.sendRequest({
+        url: `${pm.collectionVariables.get('esHost')}/${indexName}/_search`,
+        method: 'POST',
+        header: {
+            'Content-Type': 'application/json'
+        },
+        body: {
+            mode: 'raw',
+            raw: JSON.stringify(dsl)
+        }
+    }, (err, resp) => {
+        if (err) return callback(err);
+
+        callback(null, resp.json());
+    });
+};
+
 let loadDatas = (datas, callback, sleepmillis) => {
     let tasks = Object.entries(datas)
         .flatMap(([k, v]) => 
@@ -147,4 +165,5 @@ postman.setGlobalVariable('getIndex', getIndex);
 postman.setGlobalVariable('deleteIndex', deleteIndex);
 postman.setGlobalVariable('createDocument', createDocument);
 postman.setGlobalVariable('getDocumentById', getDocumentById);
+postman.setGlobalVariable('searchDocument', searchDocument);
 postman.setGlobalVariable('loadDatas', loadDatas);

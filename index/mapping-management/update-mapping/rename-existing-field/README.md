@@ -1,1 +1,3 @@
-### rename existing field
+### rename field
+
+因为旧字段下的数据已经被索引存储，所以对旧字段重命名是无效的，但是可以使用别名(alias)为旧字段创建另一个名字

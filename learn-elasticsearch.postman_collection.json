@@ -1704,9 +1704,101 @@
 								},
 								{
 									"name": "rename existing field",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+													"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+													"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+													"const options = {",
+													"    \"indexName\": \"my-index-000001\",",
+													"    \"mappings\": {",
+													"        \"properties\": {",
+													"            \"user_identifier\": {",
+													"                \"type\": \"keyword\"",
+													"            }",
+													"        }",
+													"    }",
+													"};",
+													"const docs = {",
+													"    \"my-index-000001\": [",
+													"        {\"id\": 1, \"user_identifier\": 1}",
+													"    ]",
+													"};",
+													"",
+													"asyncSeries([",
+													"    cb => createIndex(options, cb),",
+													"    cb => loadDatas(docs, cb, 1000)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const searchDocument = eval(pm.globals.get(\"searchDocument\"));",
+													"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+													"const indexName = 'my-index-000001';",
+													"const searchDsl = {",
+													"    'query': {",
+													"        'term': {",
+													"            'user_id': 1",
+													"        }",
+													"    }",
+													"};",
+													"const body = pm.response.json();",
+													"",
+													"asyncSeries([",
+													"    cb => searchDocument(indexName, searchDsl, cb),",
+													"    cb => deleteIndex(indexName, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"",
+													"    let docSearchResponse = resp[0];",
+													"    console.log(docSearchResponse);",
+													"",
+													"    pm.test('rename field successful', () => {",
+													"        pm.expect(body.acknowledged).to.be.true;",
+													"",
+													"        pm.expect(docSearchResponse.hits.hits.length).eq(1);",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
 									"request": {
-										"method": "GET",
-										"header": []
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"properties\": {\n    \"user_id\": {\n      \"type\": \"alias\",\n      \"path\": \"user_identifier\"\n    }\n  }\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/my-index-000001/_mapping",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"my-index-000001",
+												"_mapping"
+											]
+										},
+										"description": "### rename field\n\n因为旧字段下的数据已经被索引存储，所以对旧字段重命名是无效的，但是可以使用别名(alias)为旧字段创建另一个名字"
 									},
 									"response": []
 								}
@@ -2171,6 +2263,24 @@
 					"    });",
 					"};",
 					"",
+					"let searchDocument = (indexName, dsl, callback) => {",
+					"    pm.sendRequest({",
+					"        url: `${pm.collectionVariables.get('esHost')}/${indexName}/_search`,",
+					"        method: 'POST',",
+					"        header: {",
+					"            'Content-Type': 'application/json'",
+					"        },",
+					"        body: {",
+					"            mode: 'raw',",
+					"            raw: JSON.stringify(dsl)",
+					"        }",
+					"    }, (err, resp) => {",
+					"        if (err) return callback(err);",
+					"",
+					"        callback(null, resp.json());",
+					"    });",
+					"};",
+					"",
 					"let loadDatas = (datas, callback, sleepmillis) => {",
 					"    let tasks = Object.entries(datas)",
 					"        .flatMap(([k, v]) => ",
@@ -2194,6 +2304,7 @@
 					"postman.setGlobalVariable('deleteIndex', deleteIndex);",
 					"postman.setGlobalVariable('createDocument', createDocument);",
 					"postman.setGlobalVariable('getDocumentById', getDocumentById);",
+					"postman.setGlobalVariable('searchDocument', searchDocument);",
 					"postman.setGlobalVariable('loadDatas', loadDatas);"
 				]
 			}
