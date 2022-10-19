@@ -1613,23 +1613,92 @@
 												"_mapping"
 											]
 										},
-										"description": "### field properties vs multi field\n\nfield properties 和 multi field 的区别：\n\n- 当 field 类型为 object 或 nested 类型时，可以通过 properties 属性指定子字段（object field 和 multi field 的区别请阅读 [nested field vs object field](../../examples/nested-field-vs-object-field)章节\n- 当同一个字段出于不同目的需要不同的使用方式，则可以使用 multi field，比如为字段设置 text 类型，可以方便全文搜索，扩大命中概率；为字段再设置 keyword 类型，可以方便排序和聚合。不同字段类型还可以使用不同的分词器（analyzer）"
+										"description": "### field properties vs multi field\n\nfield properties 和 multi field 的区别：\n\n- 当 field 类型为 object 或 nested 类型时，可以通过 properties 属性指定子字段（object field 和 nested field 的区别请阅读 [nested field vs object field](../../../../examples/nested-field-vs-object-field)章节\n- 当同一个字段出于不同目的需要不同的使用方式，则可以使用 multi field，比如为字段设置 text 类型，可以方便全文搜索，扩大命中概率；为字段再设置 keyword 类型，可以方便排序和聚合。不同字段类型还可以使用不同的分词器（analyzer）"
 									},
 									"response": []
 								},
 								{
 									"name": "change mapping parameters for existing field",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+													"const options = {",
+													"    \"indexName\": \"my-index-000001\",",
+													"    \"mappings\": {",
+													"        \"properties\": {",
+													"            \"user_id\": {",
+													"                \"type\": \"keyword\",",
+													"                // keyword 类型字段存储长度为 20",
+													"                \"ignore_above\": 20",
+													"            }",
+													"        }",
+													"    }",
+													"};",
+													"",
+													"asyncSeries([",
+													"    cb => createIndex(options, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const getIndex = eval(pm.globals.get(\"getIndex\"));",
+													"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+													"const indexName = 'my-index-000001';",
+													"const body = pm.response.json();",
+													"",
+													"asyncSeries([",
+													"    cb => getIndex(indexName, cb),",
+													"    cb => deleteIndex(indexName, cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"",
+													"    let indexInfo = resp[0];",
+													"",
+													"    pm.test('change mapping parameters for existing field successful', () => {",
+													"        pm.expect(body.acknowledged).to.be.true;",
+													"",
+													"        pm.expect(indexInfo[indexName].mappings.properties.user_id.ignore_above).eq(30);",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
 									"request": {
-										"method": "GET",
-										"header": []
-									},
-									"response": []
-								},
-								{
-									"name": "change mapping of existing field",
-									"request": {
-										"method": "GET",
-										"header": []
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"properties\": {\n    \"user_id\": {\n      \"type\": \"keyword\",\n      \"ignore_above\": 30\n    }\n  }\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/my-index-000001/_mapping",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"my-index-000001",
+												"_mapping"
+											]
+										}
 									},
 									"response": []
 								},
