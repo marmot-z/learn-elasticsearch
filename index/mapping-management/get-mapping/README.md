@@ -1,36 +1,15 @@
-### get index mapping
+### get mapping
 
 ```
 GET /<target>/_mapping
 
 ```
 
-获取索引 mapping，<target> 可以为英文逗号分隔的多个索引名称，也可以使用通配符 \* 或 _all 参数匹配全部索引。
+获取索引的 mapping 信息。 <target> 为目标索引，支持英文逗号分隔的多个索引名称，也可以使用 _all, * 通配符获取全部索引的 mapping 信息。
 
-**查询参数：**
+```
+GET /<target>/_mapping/field/
 
-- allow_no_indices  
-    是否允许索引不存在。如果为 false，且索引不存在或者关闭，则请求返回错误。默认为 true
-- expend_wildcards  
-    通配符模式可以匹配的索引类型，支持逗号分隔的多个类型，默认为 open
-    - all  
-        匹配全部索引（包括隐藏的索引）
-    - open  
-        匹配开启的，未隐藏的索引
-    - closed  
-        匹配关闭的，为隐藏的索引
-    - hidden  
-        匹配隐藏的索引
-    - none  
-        不匹配任何索引
-- include_type_name  
-    期待 mapping body 里有 mapping type，默认为 false
-- ignore_unavailable  
-    如果为 false 且目标索引不存在或关闭则请求返回错误，默认为 false
-- local  
-    如果为 true 则从本地节点获取索引 mapping 信息，默认为 false，从主节点获取索引信息
-- master_timeout  
-    连接到主节点的等待时间，超过改时间则请求失败并返回异常，默认为 30s
-    
+```
 
-官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-get-mapping.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-get-mapping.html)
+获取索引字段的配置信息。 <target>为目标索引，具体用法同上所述。 为目标字段，支持英文逗号分隔的多个字段名称，也可以使用 _all, * 通配符获取全部字段的配置信息，另外还支持前缀和后缀通配符匹配，如：a* 匹配以 a 开头的字段，*id 匹配以 id 结尾的字段。
