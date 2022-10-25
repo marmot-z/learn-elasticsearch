@@ -1876,6 +1876,272 @@
 							"response": []
 						}
 					]
+				},
+				{
+					"name": "alias management",
+					"item": [
+						{
+							"name": "create or update alias",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+											"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+											"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+											"const options = {",
+											"    \"indexName\": \"my-index-000001\",",
+											"    \"mappings\": {",
+											"        \"properties\": {",
+											"            \"user_identifier\": {",
+											"                \"type\": \"keyword\"",
+											"            }",
+											"        }",
+											"    }",
+											"};",
+											"const docs = {",
+											"    \"my-index-000001\": [",
+											"        {\"id\": 1, \"user_identifier\": 1}",
+											"    ]",
+											"};",
+											"",
+											"asyncSeries([",
+											"    // 创建 my-index-000001 索引",
+											"    cb => createIndex(options, cb),",
+											"    // 插入若干数据",
+											"    cb => loadDatas(docs, cb, 1000)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const searchDocument = eval(pm.globals.get(\"searchDocument\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    // 通过别名获取数据",
+											"    cb => searchDocument('my-alias', {query: {match_all: {}}}, cb),",
+											"    cb => deleteIndex('my-index-000001', cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    let searchResp = resp[0];",
+											"",
+											"    pm.test('create/update alias successful', () => {",
+											"        // 测试别名创建是否成功",
+											"        pm.expect(body.acknowledged).eq(true);",
+											"        // 测试是否可以通过索引查询数据",
+											"        pm.expect(searchResp.hits.hits.length).to.gt(0);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{esHost}}/my-index-000001/_alias/my-alias",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"my-index-000001",
+										"_alias",
+										"my-alias"
+									]
+								},
+								"description": "### create or update alias\n\n创建或更新索引\n\n```\nPOST /_alias/\nPOST /_aliases/\nPUT /_alias/\nPUT /_aliases/\n\n```\n\n**路径参数**\n\n- alias 更新后的别名，如果别名不存在，则请求创建别名。别名名称支持\\[日期数学（date math）\\]([https://www.elastic.co/guide/en/elasticsearch/reference/7.17/date-math-index-names.html](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/date-math-index-names.html))\n- target 待添加的逗号分隔的索引、数据流列表，支持通配符\n    \n\n**请求参数**\n\n- master_timeout 连接主节点的等待时间，默认 30s\n- timeout 等待响应的等待时间，默认 30s\n    \n\n**请求体**\n\n- filter 使用 Query DSL 指定别名可以查询的文档\n- index_routing 将索引（indexing）数据操作路由到指定分片\n- routing 将索引、查询数据操作路由到指定分片\n- search_routing 将查询数据操作路由到指定分片\n- is_hidden 如果为 true，别名将被隐藏\n- is_write_index 如果为true，则别名设置可写的索引，即通过此别名向对应的索引写入数据"
+							},
+							"response": []
+						},
+						{
+							"name": "get alias",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+											"const options = {",
+											"    'indexName': 'my-index-000001',",
+											"    // 创建索引时创建别名",
+											"    'aliases': {",
+											"        'my-alias': {",
+											"            'is_write_index': true",
+											"        }",
+											"    }",
+											"};",
+											"",
+											"asyncSeries([",
+											"    cb => createIndex(options, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const indexName = 'my-index-000001';",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    cb => deleteIndex(indexName, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    pm.test('get alias successful', () => {",
+											"        pm.expect(body[indexName].aliases['my-alias']).to.be.exist;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{esHost}}/my-index-000001/_alias/my-alias",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"my-index-000001",
+										"_alias",
+										"my-alias"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "delete alias",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+											"const options = {",
+											"    'indexName': 'my-index-000001',",
+											"    // 创建索引时创建别名",
+											"    'aliases': {",
+											"        'my-alias': {",
+											"            'is_write_index': true",
+											"        }",
+											"    }",
+											"};",
+											"",
+											"asyncSeries([",
+											"    cb => createIndex(options, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const getAlias = eval(pm.globals.get(\"getAlias\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const indexName = 'my-index-000001';",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    cb => getAlias(indexName, cb),",
+											"    cb => deleteIndex(indexName, cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    let aliasInfo = resp[0];",
+											"",
+											"    pm.test('delete alias successful', () => {",
+											"        // 判断别名删除成功",
+											"        pm.expect(body.acknowledged).eq(true);",
+											"        pm.expect(aliasInfo[indexName].aliases['my-alias']).to.be.not.exist;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{esHost}}/my-index-000001/_alias/my-alias",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"my-index-000001",
+										"_alias",
+										"my-alias"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "alias 是索引和数据流（data stream）的辅助名称，es 大部分 API 都支持使用别名代替数据流和索引名称。\n\n本章节将要演示的 alias API:\n\n- create/update alias\n- get alias\n- delete alias",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"let getAlias = (indexName, cb) => {",
+									"    pm.sendRequest({    ",
+									"        url: `${pm.collectionVariables.get('esHost')}/${indexName}/_alias`,",
+									"        method: 'GET'",
+									"    }, (err, resp) => {",
+									"        if (err) throw err;",
+									"",
+									"        cb(null, resp.json());",
+									"    });",
+									"};",
+									"",
+									"postman.setGlobalVariable('getAlias', getAlias);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
 				}
 			],
 			"description": "### index operations\n\n演示索引相关的操作:\n\n- 创建索引(create index)\n- 获取索引(get index)\n- 删除索引(delete index)\n- 拷贝索引(clone index)\n- 关闭索引(close index)\n- 开启索引(open index)\n- 获取索引设置(get index setting)\n- 更新索引设置(update index setting)\n- 获取索引映射(get index mapping)\n- 更新索引映射(update index mapping)\n- 获取索引(多个)统计(get index stats)\n- 创建别名(create alias)\n- 获取别名(get alias)\n- 删除别名(delete alias)\n- 创建/更新索引模板(create or update index template)\n- 获取索引模板(get index template)\n- 删除索引模板(delete index template)\n- 分词器使用(analyze usage)"
