@@ -1,0 +1,1 @@
+运行此集合的请求前，请先上传本目录下的 tmdb.json 文件（该文件为数千部电影的详细信息，来自于 [https://www.themoviedb.org/](https://www.themoviedb.org/) ）。pre-request script 会将 json 数据加载到 es 中的 tmdb 索引中，以用于后续的查询请求。tests 会删除 tmdb 索引以用于后续的重复测试（如果你想查看 tmdb 索引中的数据，只需将 tests 中的代码注释既可）。
