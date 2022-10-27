@@ -2668,6 +2668,98 @@
 						"description": "### constant score query\n\nconstant score query 是包装 filter query 的一类查询，查询返回的文档分数总是同 boost 参数一致。\n\n**查询参数：**\n\n- filter 所希望的 [Filter query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html) 查询\n- boost 返回文档的分数浮点值，默认为 1.0"
 					},
 					"response": []
+				},
+				{
+					"name": "disjunction max query",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+									"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+									"const docs = {",
+									"    'my-index-000001': [",
+									"        {",
+									"            id: 1, ",
+									"            title: 'Quick brown rabbits', ",
+									"            body: 'Brown rabbits are commonly seen'",
+									"        },",
+									"        {",
+									"            id: 2,",
+									"            title: 'Keeping pets healthy', ",
+									"            body: 'My quick brown fox eats rabbits on a regular basis'",
+									"        }",
+									"    ]",
+									"};",
+									"",
+									"asyncSeries([",
+									"    cb => loadDatas(docs, cb, 1000)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+									"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+									"const body = pm.response.json();",
+									"",
+									"asyncSeries([",
+									"    cb => deleteIndex('my-index-000001', cb)",
+									"], (err, resp) => {",
+									"    if (err) throw err;",
+									"",
+									"    pm.test('disjunction max query successful', () => {",
+									"        let hits = body.hits.hits;",
+									"",
+									"        // 文档 1 中 title、body 字段各有 brown，按道理总分数更高",
+									"        // 但是由于 dis_max 查询只取最高匹配的分数 + 其他匹配分数 * tie_breaker",
+									"        // 所以由于文档 2 的 brown fox 单个匹配分数更高，所以文档总分数更高",
+									"        // 故文档 2 的总分数比文档 1 高",
+									"        pm.expect(hits[0]._source.id).eq(2);",
+									"        pm.expect(hits[1]._source.id).eq(1);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"dis_max\": {\n      \"queries\": [\n        {\n          \"match\": {\n            \"title\": \"Brown fox\"\n          }\n        },\n        {\n          \"match\": {\n            \"body\": \"Brown fox\"\n          }\n        }\n      ]\n    }\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/my-index-000001/_search",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"my-index-000001",
+								"_search"
+							]
+						},
+						"description": "### disjunction max query\n\n如果返回的文档被多个查询子句匹配，dis_max 查询返回的文档分数 = 最匹配子句的分数 + 其他查询子项分数 \\* tie_breaker。\n\n**查询参数：**\n\n- queries 一个或多个查询子句\n- tie_breaker 一个介于 0 和 1 的浮点数，用于增加匹配多个查询子句文档的相关性分数，默认为 0\n    \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-dis-max-query.html#query-dsl-dis-max-query](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-dis-max-query.html#query-dsl-dis-max-query)"
+					},
+					"response": []
 				}
 			],
 			"description": "运行此集合的请求前，请先上传本目录下的 tmdb.json 文件（该文件为数千部电影的详细信息，来自于 [https://www.themoviedb.org/](https://www.themoviedb.org/) ）。pre-request script 会将 json 数据加载到 es 中的 tmdb 索引中，以用于后续的查询请求。tests 会删除 tmdb 索引以用于后续的重复测试（如果你想查看 tmdb 索引中的数据，只需将 tests 中的代码注释既可）。",
