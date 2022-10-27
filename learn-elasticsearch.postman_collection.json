@@ -2494,272 +2494,277 @@
 			"name": "query",
 			"item": [
 				{
-					"name": "boolean query",
-					"event": [
+					"name": "compound queries",
+					"item": [
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const body = pm.response.json();",
-									"",
-									"pm.test('boolean query successful', () => {",
-									"    // 由于设置了 minimum_should_match 参数，",
-									"    // 必须满足一个 should 查询条件，所以返回了 4 条记录",
-									"    pm.expect(body.hits.total.value).eq(4);",
-									"    // 必须包含 Paramount Picture 演员",
-									"    pm.expect(",
-									"        body.hits.hits.flatMap(i => ",
-									"            i._source.production_companies.map(j => j.name)",
-									"        )",
-									"    )",
-									"    .to.be.all.contains('Paramount Pictures');",
-									"    // 名称必须含有 Four、baby 短语",
-									"    pm.expect(",
-									"        body.hits.hits.map(i => i._source.title)",
-									"    )",
-									"    .to.be.all.match(/four|baby/i);",
-									"    // 发布状态必须为 release",
-									"    pm.expect(",
-									"        body.hits.hits.map(i => i._source.status)",
-									"    )",
-									"    .to.be.all.match(/released/i);",
-									"    // 得分必须大于 6.0",
-									"    pm.expect(",
-									"        body.hits.hits.map(i => i._source.vote_average).first()",
-									"    )",
-									"    .to.be.above(6.0);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"match\": {\n            \"title\": \"Four Baby\"\n          }\n        }\n      ],\n      \"must_not\": [\n        {\n          \"range\": {\n            \"vote_average\": {\n              \"lte\": 6.0\n            }\n          }\n        }\n      ],\n      \"should\": [\n        {\n          \"match\": {\n            \"production_companies.name\": \"Paramount Pictures\"\n          }\n        }\n      ],\n      \"filter\": [\n        {\n          \"term\": {\n            \"status.keyword\": \"Released\"\n          }\n        }\n      ],\n      \"minimum_should_match\": 1\n    }\n  },\n  \"_source\": [\n    \"id\", \"title\", \"vote_count\", \"vote_average\", \"production_companies\", \"status\"\n  ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"name": "boolean query",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const body = pm.response.json();",
+											"",
+											"pm.test('boolean query successful', () => {",
+											"    // 由于设置了 minimum_should_match 参数，",
+											"    // 必须满足一个 should 查询条件，所以返回了 4 条记录",
+											"    pm.expect(body.hits.total.value).eq(4);",
+											"    // 必须包含 Paramount Picture 演员",
+											"    pm.expect(",
+											"        body.hits.hits.flatMap(i => ",
+											"            i._source.production_companies.map(j => j.name)",
+											"        )",
+											"    )",
+											"    .to.be.all.contains('Paramount Pictures');",
+											"    // 名称必须含有 Four、baby 短语",
+											"    pm.expect(",
+											"        body.hits.hits.map(i => i._source.title)",
+											"    )",
+											"    .to.be.all.match(/four|baby/i);",
+											"    // 发布状态必须为 release",
+											"    pm.expect(",
+											"        body.hits.hits.map(i => i._source.status)",
+											"    )",
+											"    .to.be.all.match(/released/i);",
+											"    // 得分必须大于 6.0",
+											"    pm.expect(",
+											"        body.hits.hits.map(i => i._source.vote_average).first()",
+											"    )",
+											"    .to.be.above(6.0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
 								}
-							}
-						},
-						"url": {
-							"raw": "{{esHost}}/tmdb/_search",
-							"host": [
-								"{{esHost}}"
 							],
-							"path": [
-								"tmdb",
-								"_search"
-							]
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"match\": {\n            \"title\": \"Four Baby\"\n          }\n        }\n      ],\n      \"must_not\": [\n        {\n          \"range\": {\n            \"vote_average\": {\n              \"lte\": 6.0\n            }\n          }\n        }\n      ],\n      \"should\": [\n        {\n          \"match\": {\n            \"production_companies.name\": \"Paramount Pictures\"\n          }\n        }\n      ],\n      \"filter\": [\n        {\n          \"term\": {\n            \"status.keyword\": \"Released\"\n          }\n        }\n      ],\n      \"minimum_should_match\": 1\n    }\n  },\n  \"_source\": [\n    \"id\", \"title\", \"vote_count\", \"vote_average\", \"production_companies\", \"status\"\n  ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/tmdb/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"tmdb",
+										"_search"
+									]
+								},
+								"description": "### boolean query\n\nboolean query 是由多个查询组合而成的文档查询，其对应于 Lucene 的 BooleanQuery。其有一个或多个子句组成，每个子句都有对应的类型：\n\n- must\n  \n  该子句会匹配对应的文档，并贡献得分\n  \n- filter\n  \n  该子句会匹配对应的文档，但其不同于 must 的地方在于分数会被忽略，并且该子句会被缓存\n  \n- should\n  \n  该子句应该匹配对应的文档\n  \n- must_not\n  \n  该子句不会匹配对应的文档，由于运行于 filter context 中意味着分数将会被忽略且会被缓存\n  \n\nboolean query 采用'匹配尽可能多'的策略，每个文档最终的分数由 must 和 should 子句分数汇总而成。\n\nminimum_should_match 参数用于指定 should 子句最少返回的文档数量。"
+							},
+							"response": []
 						},
-						"description": "### boolean query\n\nboolean query 是由多个查询组合而成的文档查询，其对应于 Lucene 的 BooleanQuery。其有一个或多个子句组成，每个子句都有对应的类型：\n\n- must\n  \n  该子句会匹配对应的文档，并贡献得分\n  \n- filter\n  \n  该子句会匹配对应的文档，但其不同于 must 的地方在于分数会被忽略，并且该子句会被缓存\n  \n- should\n  \n  该子句应该匹配对应的文档\n  \n- must_not\n  \n  该子句不会匹配对应的文档，由于运行于 filter context 中意味着分数将会被忽略且会被缓存\n  \n\nboolean query 采用'匹配尽可能多'的策略，每个文档最终的分数由 must 和 should 子句分数汇总而成。\n\nminimum_should_match 参数用于指定 should 子句最少返回的文档数量。"
-					},
-					"response": []
-				},
-				{
-					"name": "boosting query",
-					"event": [
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const body = pm.response.json();",
-									"",
-									"pm.test('boosting query successful', () => {",
-									"    let hits = body.hits.hits;",
-									"    let fourRoomsDoc = hits.find(doc => ",
-									"        doc._source.title.match(/four rooms/i)",
-									"    );",
-									"    let babyDoc = hits.find(doc => ",
-									"        doc._source.title.match(/.*baby.*/i)",
-									"    );",
-									"",
-									"    // 根据 four rooms baby 查询",
-									"    // four rooms(5) 数据匹配度更高，分数本应更高，",
-									"    // 但是由于其又命中了 negative 相关查询，分数被降低，",
-									"    // 所以其最终的分数反而小于 Rosemary's Baby(805) 数据",
-									"    pm.expect(fourRoomsDoc._score).to.be.below(babyDoc._score);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"query\": {\n    \"boosting\": {\n      \"positive\": {\n        \"bool\": {\n          \"must\": [\n            {\n              \"match\": {\n                \"title\": \"four Rooms baby\"\n              }\n            },\n            {\n              \"constant_score\": {\n                \"filter\": {\n                  \"ids\": {\n                    \"values\": [\n                     805, 5\n                    ]\n                  }\n                }\n              }\n            }\n          ]\n        }\n      },\n      \"negative\": {\n        \"match\": {\n          \"title\": \"four\"\n        }\n      },\n      \"negative_boost\": 0.5\n    }\n  },\n  \"_source\": [\"id\", \"title\"]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"name": "boosting query",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const body = pm.response.json();",
+											"",
+											"pm.test('boosting query successful', () => {",
+											"    let hits = body.hits.hits;",
+											"    let fourRoomsDoc = hits.find(doc => ",
+											"        doc._source.title.match(/four rooms/i)",
+											"    );",
+											"    let babyDoc = hits.find(doc => ",
+											"        doc._source.title.match(/.*baby.*/i)",
+											"    );",
+											"",
+											"    // 根据 four rooms baby 查询",
+											"    // four rooms(5) 数据匹配度更高，分数本应更高，",
+											"    // 但是由于其又命中了 negative 相关查询，分数被降低，",
+											"    // 所以其最终的分数反而小于 Rosemary's Baby(805) 数据",
+											"    pm.expect(fourRoomsDoc._score).to.be.below(babyDoc._score);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
 								}
-							}
-						},
-						"url": {
-							"raw": "{{esHost}}/tmdb/_search",
-							"host": [
-								"{{esHost}}"
 							],
-							"path": [
-								"tmdb",
-								"_search"
-							]
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"boosting\": {\n      \"positive\": {\n        \"bool\": {\n          \"must\": [\n            {\n              \"match\": {\n                \"title\": \"four Rooms baby\"\n              }\n            },\n            {\n              \"constant_score\": {\n                \"filter\": {\n                  \"ids\": {\n                    \"values\": [\n                     805, 5\n                    ]\n                  }\n                }\n              }\n            }\n          ]\n        }\n      },\n      \"negative\": {\n        \"match\": {\n          \"title\": \"four\"\n        }\n      },\n      \"negative_boost\": 0.5\n    }\n  },\n  \"_source\": [\"id\", \"title\"]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/tmdb/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"tmdb",
+										"_search"
+									]
+								},
+								"description": "### boosting query\n\nboostring query 返回 postive 查询匹配的文档，并降低 negative 匹配文档的相关分数。你可以使用该查询降低某些文档的分数，而不会将它们从搜索结果中排除。\n\nboosting query 的三个顶级参数：\n\n- positive该查询返回匹配的文档\n- negative该查询降低匹配文档的相关分数\n- negative_boost\n    降低文档分数的浮点数权重值，介于 0 与 1 之间"
+							},
+							"response": []
 						},
-						"description": "### boosting query\n\nboostring query 返回 postive 查询匹配的文档，并降低 negative 匹配文档的相关分数。你可以使用该查询降低某些文档的分数，而不会将它们从搜索结果中排除。\n\nboosting query 的三个顶级参数：\n\n- positive该查询返回匹配的文档\n- negative该查询降低匹配文档的相关分数\n- negative_boost\n    降低文档分数的浮点数权重值，介于 0 与 1 之间"
-					},
-					"response": []
-				},
-				{
-					"name": "constant score query",
-					"event": [
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const body = pm.response.json();",
-									"",
-									"pm.test('constant score query successful', () => {",
-									"    // 返回的文档分数都同 boost 一致",
-									"    body.hits.hits.map(doc => doc._score)",
-									"        .forEach(s => pm.expect(s).eq(1.2));",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"query\": {\n    \"constant_score\": {\n      \"filter\": {\n        \"terms\": {\n          \"id\": [5, 805]\n        }\n      },\n      \"boost\": 1.2\n    }\n  },\n  \"_source\": [\"id\"]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"name": "constant score query",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const body = pm.response.json();",
+											"",
+											"pm.test('constant score query successful', () => {",
+											"    // 返回的文档分数都同 boost 一致",
+											"    body.hits.hits.map(doc => doc._score)",
+											"        .forEach(s => pm.expect(s).eq(1.2));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
 								}
-							}
-						},
-						"url": {
-							"raw": "{{esHost}}/tmdb/_search",
-							"host": [
-								"{{esHost}}"
 							],
-							"path": [
-								"tmdb",
-								"_search"
-							]
-						},
-						"description": "### constant score query\n\nconstant score query 是包装 filter query 的一类查询，查询返回的文档分数总是同 boost 参数一致。\n\n**查询参数：**\n\n- filter 所希望的 [Filter query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html) 查询\n- boost 返回文档的分数浮点值，默认为 1.0"
-					},
-					"response": []
-				},
-				{
-					"name": "disjunction max query",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
-									"const createDocument = eval(pm.globals.get(\"createDocument\"));",
-									"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
-									"const docs = {",
-									"    'my-index-000001': [",
-									"        {",
-									"            id: 1, ",
-									"            title: 'Quick brown rabbits', ",
-									"            body: 'Brown rabbits are commonly seen'",
-									"        },",
-									"        {",
-									"            id: 2,",
-									"            title: 'Keeping pets healthy', ",
-									"            body: 'My quick brown fox eats rabbits on a regular basis'",
-									"        }",
-									"    ]",
-									"};",
-									"",
-									"asyncSeries([",
-									"    cb => loadDatas(docs, cb, 1000)",
-									"], (err, resp) => {",
-									"    if (err) throw err;",
-									"});"
-								],
-								"type": "text/javascript"
-							}
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"constant_score\": {\n      \"filter\": {\n        \"terms\": {\n          \"id\": [5, 805]\n        }\n      },\n      \"boost\": 1.2\n    }\n  },\n  \"_source\": [\"id\"]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/tmdb/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"tmdb",
+										"_search"
+									]
+								},
+								"description": "### constant score query\n\nconstant score query 是包装 filter query 的一类查询，查询返回的文档分数总是同 boost 参数一致。\n\n**查询参数：**\n\n- filter 所希望的 [Filter query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html) 查询\n- boost 返回文档的分数浮点值，默认为 1.0"
+							},
+							"response": []
 						},
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
-									"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
-									"const body = pm.response.json();",
-									"",
-									"asyncSeries([",
-									"    cb => deleteIndex('my-index-000001', cb)",
-									"], (err, resp) => {",
-									"    if (err) throw err;",
-									"",
-									"    pm.test('disjunction max query successful', () => {",
-									"        let hits = body.hits.hits;",
-									"",
-									"        // 文档 1 中 title、body 字段各有 brown，按道理总分数更高",
-									"        // 但是由于 dis_max 查询只取最高匹配的分数 + 其他匹配分数 * tie_breaker",
-									"        // 所以由于文档 2 的 brown fox 单个匹配分数更高，所以文档总分数更高",
-									"        // 故文档 2 的总分数比文档 1 高",
-									"        pm.expect(hits[0]._source.id).eq(2);",
-									"        pm.expect(hits[1]._source.id).eq(1);",
-									"    });",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"query\": {\n    \"dis_max\": {\n      \"queries\": [\n        {\n          \"match\": {\n            \"title\": \"Brown fox\"\n          }\n        },\n        {\n          \"match\": {\n            \"body\": \"Brown fox\"\n          }\n        }\n      ]\n    }\n  }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"name": "disjunction max query",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+											"const loadDatas = eval(pm.globals.get(\"loadDatas\"));",
+											"const docs = {",
+											"    'my-index-000001': [",
+											"        {",
+											"            id: 1, ",
+											"            title: 'Quick brown rabbits', ",
+											"            body: 'Brown rabbits are commonly seen'",
+											"        },",
+											"        {",
+											"            id: 2,",
+											"            title: 'Keeping pets healthy', ",
+											"            body: 'My quick brown fox eats rabbits on a regular basis'",
+											"        }",
+											"    ]",
+											"};",
+											"",
+											"asyncSeries([",
+											"    cb => loadDatas(docs, cb, 1000)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+											"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+											"const body = pm.response.json();",
+											"",
+											"asyncSeries([",
+											"    cb => deleteIndex('my-index-000001', cb)",
+											"], (err, resp) => {",
+											"    if (err) throw err;",
+											"",
+											"    pm.test('disjunction max query successful', () => {",
+											"        let hits = body.hits.hits;",
+											"",
+											"        // 文档 1 中 title、body 字段各有 brown，按道理总分数更高",
+											"        // 但是由于 dis_max 查询只取最高匹配的分数 + 其他匹配分数 * tie_breaker",
+											"        // 所以由于文档 2 的 brown fox 单个匹配分数更高，所以文档总分数更高",
+											"        // 故文档 2 的总分数比文档 1 高",
+											"        pm.expect(hits[0]._source.id).eq(2);",
+											"        pm.expect(hits[1]._source.id).eq(1);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
 								}
-							}
-						},
-						"url": {
-							"raw": "{{esHost}}/my-index-000001/_search",
-							"host": [
-								"{{esHost}}"
 							],
-							"path": [
-								"my-index-000001",
-								"_search"
-							]
-						},
-						"description": "### disjunction max query\n\n如果返回的文档被多个查询子句匹配，dis_max 查询返回的文档分数 = 最匹配子句的分数 + 其他查询子项分数 \\* tie_breaker。\n\n**查询参数：**\n\n- queries 一个或多个查询子句\n- tie_breaker 一个介于 0 和 1 的浮点数，用于增加匹配多个查询子句文档的相关性分数，默认为 0\n    \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-dis-max-query.html#query-dsl-dis-max-query](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-dis-max-query.html#query-dsl-dis-max-query)"
-					},
-					"response": []
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"dis_max\": {\n      \"queries\": [\n        {\n          \"match\": {\n            \"title\": \"Brown fox\"\n          }\n        },\n        {\n          \"match\": {\n            \"body\": \"Brown fox\"\n          }\n        }\n      ]\n    }\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/my-index-000001/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"my-index-000001",
+										"_search"
+									]
+								},
+								"description": "### disjunction max query\n\n如果返回的文档被多个查询子句匹配，dis_max 查询返回的文档分数 = 最匹配子句的分数 + 其他查询子项分数 \\* tie_breaker。\n\n**查询参数：**\n\n- queries 一个或多个查询子句\n- tie_breaker 一个介于 0 和 1 的浮点数，用于增加匹配多个查询子句文档的相关性分数，默认为 0\n    \n\n官方文档：[https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-dis-max-query.html#query-dsl-dis-max-query](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-dis-max-query.html#query-dsl-dis-max-query)"
+							},
+							"response": []
+						}
+					]
 				}
 			],
 			"description": "运行此集合的请求前，请先上传本目录下的 tmdb.json 文件（该文件为数千部电影的详细信息，来自于 [https://www.themoviedb.org/](https://www.themoviedb.org/) ）。pre-request script 会将 json 数据加载到 es 中的 tmdb 索引中，以用于后续的查询请求。tests 会删除 tmdb 索引以用于后续的重复测试（如果你想查看 tmdb 索引中的数据，只需将 tests 中的代码注释既可）。",
