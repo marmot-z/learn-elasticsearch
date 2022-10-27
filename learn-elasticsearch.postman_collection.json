@@ -2562,6 +2562,64 @@
 						"description": "### boolean query\n\nboolean query 是由多个查询组合而成的文档查询，其对应于 Lucene 的 BooleanQuery。其有一个或多个子句组成，每个子句都有对应的类型：\n\n- must\n  \n  该子句会匹配对应的文档，并贡献得分\n  \n- filter\n  \n  该子句会匹配对应的文档，但其不同于 must 的地方在于分数会被忽略，并且该子句会被缓存\n  \n- should\n  \n  该子句应该匹配对应的文档\n  \n- must_not\n  \n  该子句不会匹配对应的文档，由于运行于 filter context 中意味着分数将会被忽略且会被缓存\n  \n\nboolean query 采用'匹配尽可能多'的策略，每个文档最终的分数由 must 和 should 子句分数汇总而成。\n\nminimum_should_match 参数用于指定 should 子句最少返回的文档数量。"
 					},
 					"response": []
+				},
+				{
+					"name": "boosting query",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const body = pm.response.json();",
+									"",
+									"pm.test('boosting query successful', () => {",
+									"    let hits = body.hits.hits;",
+									"    let fourRoomsDoc = hits.find(doc => ",
+									"        doc._source.title.match(/four rooms/i)",
+									"    );",
+									"    let babyDoc = hits.find(doc => ",
+									"        doc._source.title.match(/.*baby.*/i)",
+									"    );",
+									"",
+									"    // 根据 four rooms baby 查询",
+									"    // four rooms(5) 数据匹配度更高，分数本应更高，",
+									"    // 但是由于其又命中了 negative 相关查询，分数被降低，",
+									"    // 所以其最终的分数反而小于 Rosemary's Baby(805) 数据",
+									"    pm.expect(fourRoomsDoc._score).to.be.below(babyDoc._score);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"boosting\": {\n      \"positive\": {\n        \"bool\": {\n          \"must\": [\n            {\n              \"match\": {\n                \"title\": \"four Rooms baby\"\n              }\n            },\n            {\n              \"constant_score\": {\n                \"filter\": {\n                  \"ids\": {\n                    \"values\": [\n                     805, 5\n                    ]\n                  }\n                }\n              }\n            }\n          ]\n        }\n      },\n      \"negative\": {\n        \"match\": {\n          \"title\": \"four\"\n        }\n      },\n      \"negative_boost\": 0.5\n    }\n  },\n  \"_source\": [\"id\", \"title\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{esHost}}/tmdb/_search",
+							"host": [
+								"{{esHost}}"
+							],
+							"path": [
+								"tmdb",
+								"_search"
+							]
+						},
+						"description": "### boosting query\n\nboostring query 返回 postive 查询匹配的文档，并降低 negative 匹配文档的相关分数。你可以使用该查询降低某些文档的分数，而不会将它们从搜索结果中排除。\n\nboosting query 的三个顶级参数：\n\n- positive该查询返回匹配的文档\n- negative该查询降低匹配文档的相关分数\n- negative_boost\n    降低文档分数的浮点数权重值，介于 0 与 1 之间"
+					},
+					"response": []
 				}
 			],
 			"description": "运行此集合的请求前，请先上传本目录下的 tmdb.json 文件（该文件为数千部电影的详细信息，来自于 [https://www.themoviedb.org/](https://www.themoviedb.org/) ）。pre-request script 会将 json 数据加载到 es 中的 tmdb 索引中，以用于后续的查询请求。tests 会删除 tmdb 索引以用于后续的重复测试（如果你想查看 tmdb 索引中的数据，只需将 tests 中的代码注释既可）。",
