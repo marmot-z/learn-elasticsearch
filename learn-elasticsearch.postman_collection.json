@@ -3220,6 +3220,85 @@
 								"description": "### match boolean prefix query\n\nmatch_bool_prefix 查询会将输入文本分析后的词（term）构造成 bool 查询，最后一个词会被用于 prefix 查询，其他词会被作为 term 查询。\n\n```\nGET /_search\n{\n  \"query\": {\n    \"match_bool_prefix\" : {\n      \"message\" : \"quick brown f\"\n    }\n  }\n}\n```\n\n上述查询类似于以下 bool 查询：\n\n```\nGET /_search\n{\n  \"query\": {\n    \"bool\" : {\n      \"should\": [\n        { \"term\": { \"message\": \"quick\" }},\n        { \"term\": { \"message\": \"brown\" }},\n        { \"prefix\": { \"message\": \"f\"}}\n      ]\n    }\n  }\n}\n```\n\nmatch_bool_prefix 查询和 match_pharse_prefix 查询的区别在于：match_pharse_prefix 查询以短语（pharse）的方式进行匹配，而 match_bool_prefix 使用分词后的词进行匹配，其可以匹配 'quick fox brown'、'fox quick brown'、'quick'、'brown'、'f' 等多种文档\n\n**查询参数**：\n\n- minumum_should_match\n- operator\n    \n\n参数含义同 match 查询参数，以下此参数也同步 match 查询参数，但不会应用于最后一个词（term）的前缀（prefix）查询\n\n- fuzziness\n- prefix_length\n- max_expansions\n- fuzzy_transpositions\n- fuzzy_rewrite"
 							},
 							"response": []
+						},
+						{
+							"name": "match phrase query",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const slop = 3;",
+											"const queryText = 'which follows the comedic journeys of two fish';",
+											"const body = pm.response.json();",
+											"const stopwords = ['and', 'the', 'of', 'a'];",
+											"",
+											"function cacluteSlop(pharse1, pharse2) {",
+											"    let arr1 = pharse1.toLowerCase()",
+											"                    .split(/,?\\s+/)",
+											"                    // filter stop word",
+											"                    .filter(w => stopwords.indexOf(w) < 0);",
+											"    let arr2 = pharse2.toLowerCase()",
+											"                    .split(/,?\\s+/)",
+											"                    .filter(w => stopwords.indexOf(w) < 0);",
+											"",
+											"    // 查找 arr1 的起始词在 arr2 的位置",
+											"    let startIndex = arr2.indexOf(arr1[0]);",
+											"    // 比对 arr1 的结束词在 arr2 的位置",
+											"    let endIndex = arr2.indexOf(arr1[arr1.length - 1], 0);",
+											"    // 匹配到的文本长度 = 结束位置 - 起始位置",
+											"    let matchPharseLength = endIndex - startIndex;",
+											"",
+											"    // 计算查询文本和结果文本的差距",
+											"    return matchPharseLength - arr1.length;",
+											"}",
+											"",
+											"pm.test('match pharse query successful', () => {",
+											"    // 验证查询文本和命中文本相差的 token 数量小于等于 slop 值",
+											"    pm.expect(cacluteSlop(queryText, body.hits.hits[0]._source.overview)).to.be.lte(slop);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"query\": {\n        \"match_phrase\": {\n            \"overview\": {\n                \"query\": \"which follows the comedic journeys of two fish\",\n                \"slop\": 3\n            }\n        }\n    },\n    \"profile\": true\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/tmdb/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"tmdb",
+										"_search"
+									]
+								},
+								"description": "### match phrase query\n\nmatch_phrase 查询不同于 match 在查询前将文本解析成若干个词条，其会将查询文本作为整个语句进行查询，精确匹配的文档内容顺序和查询文本一致。\n\n可以使用 slop 参数调整 match_phrase 的匹配结果，如 slop 设置为 2，输入 \"I like riding\" 可以匹配到  \"I like swimming and riding!\" 文档。"
+							},
+							"response": []
+						},
+						{
+							"name": "match phrase prefix query",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"description": "### match phrase prefix query\n\nmatch phrase prefix 查询会以查询文本的最后一个词为前缀，匹配以该词开头的文档，返回的文档内容必须同查询文本单词顺序一致。"
+							},
+							"response": []
 						}
 					]
 				}
