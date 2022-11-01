@@ -2765,6 +2765,396 @@
 							"response": []
 						}
 					]
+				},
+				{
+					"name": "full text queries",
+					"item": [
+						{
+							"name": "match",
+							"item": [
+								{
+									"name": "match",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const body = pm.response.json();",
+													"",
+													"pm.test('match query successful', () => {",
+													"    pm.expect(body.hits.hits.length).eq(1);",
+													"",
+													"    let title = body.hits.hits[0]._source.title.toLowerCase();",
+													"",
+													"    // 使用了 minimum_should_match 参数，",
+													"    // 则返回的文档必须命中至少 3 个查询子句",
+													"    pm.expect(title).to.be.contain('i');",
+													"    pm.expect(title).to.be.contain('want');",
+													"    pm.expect(title).to.be.contain('you');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"query\": {\n    \"match\": {\n      \"title\": {\n        \"query\": \"i want watch four child with you\",\n        \"operator\": \"or\",\n        \"minimum_should_match\": 3\n      }\n    }\n  },\n  \"_source\": [\"id\", \"title\"]\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/tmdb/_search",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"tmdb",
+												"_search"
+											]
+										},
+										"description": "### match\n\n可以使用 operator 参数设置为 or 或 and 来控制查询逻辑。当为 or 时查询命中分词中任意一个的 token ，既可返回对应的文档。当为 and 时查询命中分词后的全部 token 才可以返回对应的文档。\n\n使用  [`minimum_should_match`](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-minimum-should-match.html) 参数可以指定最少匹配的 should 子句个数，具体参考演示样例。\n\n使用 analyzer 参数可以指定查询前对文本进行分析所用的分词器。默认使用字段 mapping 定义的分词器或者索引的默认分词器。"
+									},
+									"response": []
+								},
+								{
+									"name": "match fuzziness",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const body = pm.response.json();",
+													"",
+													"/**",
+													" * calculate levenshtein edit distance",
+													" * ",
+													" * @see https://stackoverflow.com/questions/18516942/fastest-general-purpose-levenshtein-javascript-implementation",
+													" */",
+													"function levenshtein(s, t) {",
+													"    if (s === t) {",
+													"        return 0;",
+													"    }",
+													"    var n = s.length, m = t.length;",
+													"    if (n === 0 || m === 0) {",
+													"        return n + m;",
+													"    }",
+													"    var x = 0, y, a, b, c, d, g, h;",
+													"    var p = new Uint16Array(n);",
+													"    var u = new Uint32Array(n);",
+													"    for (y = 0; y < n;) {",
+													"        u[y] = s.charCodeAt(y);",
+													"        p[y] = ++y;",
+													"    }",
+													"",
+													"    for (; (x + 3) < m; x += 4) {",
+													"        var e1 = t.charCodeAt(x);",
+													"        var e2 = t.charCodeAt(x + 1);",
+													"        var e3 = t.charCodeAt(x + 2);",
+													"        var e4 = t.charCodeAt(x + 3);",
+													"        c = x;",
+													"        b = x + 1;",
+													"        d = x + 2;",
+													"        g = x + 3;",
+													"        h = x + 4;",
+													"        for (y = 0; y < n; y++) {",
+													"            a = p[y];",
+													"            if (a < c || b < c) {",
+													"                c = (a > b ? b + 1 : a + 1);",
+													"            }",
+													"            else {",
+													"                if (e1 !== u[y]) {",
+													"                    c++;",
+													"                }",
+													"            }",
+													"",
+													"            if (c < b || d < b) {",
+													"                b = (c > d ? d + 1 : c + 1);",
+													"            }",
+													"            else {",
+													"                if (e2 !== u[y]) {",
+													"                    b++;",
+													"                }",
+													"            }",
+													"",
+													"            if (b < d || g < d) {",
+													"                d = (b > g ? g + 1 : b + 1);",
+													"            }",
+													"            else {",
+													"                if (e3 !== u[y]) {",
+													"                    d++;",
+													"                }",
+													"            }",
+													"",
+													"            if (d < g || h < g) {",
+													"                g = (d > h ? h + 1 : d + 1);",
+													"            }",
+													"            else {",
+													"                if (e4 !== u[y]) {",
+													"                    g++;",
+													"                }",
+													"            }",
+													"            p[y] = h = g;",
+													"            g = d;",
+													"            d = b;",
+													"            b = c;",
+													"            c = a;",
+													"        }",
+													"    }",
+													"",
+													"    for (; x < m;) {",
+													"        var e = t.charCodeAt(x);",
+													"        c = x;",
+													"        d = ++x;",
+													"        for (y = 0; y < n; y++) {",
+													"            a = p[y];",
+													"            if (a < c || d < c) {",
+													"                d = (a > d ? d + 1 : a + 1);",
+													"            }",
+													"            else {",
+													"                if (e !== u[y]) {",
+													"                    d = c + 1;",
+													"                }",
+													"                else {",
+													"                    d = c;",
+													"                }",
+													"            }",
+													"            p[y] = d;",
+													"            c = a;",
+													"        }",
+													"        h = d;",
+													"    }",
+													"",
+													"    return h;",
+													"}",
+													"",
+													"pm.test('match fuzziness query successful', () => {",
+													"    pm.expect(body.hits.hits.length).eq(1);",
+													"",
+													"    let title = body.hits.hits[0]._source.title.toLowerCase();",
+													"    let tokens = title.split(' ');",
+													"",
+													"    // prefix_length 为 2，代表至少前缀 2 个字符一致",
+													"    pm.expect(tokens[0].substring(0, 2)).eq('fourr'.substring(0, 2));",
+													"    pm.expect(tokens[1].substring(0, 2)).eq('romms'.substring(0, 2));",
+													"",
+													"    // token 的编辑距离小于等于 2",
+													"    pm.expect(levenshtein('fourr', 'four')).to.be.lte(2);",
+													"    pm.expect(levenshtein('romms', 'room')).to.be.lte(2);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"query\": {\n        \"match\": {\n            \"title\": {\n                \"query\": \"Fourr romms\",\n                \"operator\": \"and\",\n                \"fuzziness\": \"AUTO:3,5\",\n                \"prefix_length\": 2\n            }\n        }\n    },\n    \"_source\": [\n        \"id\",\n        \"title\"\n    ],\n    \"profile\": true\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/tmdb/_search",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"tmdb",
+												"_search"
+											]
+										},
+										"description": "### match fuzziness\n\nfuzziness 参数可以在 match 查询时模糊匹配对应的文档。比如查询文本为 'rooom' ，其可以匹配包含 'room' 单词的文档。\n\n可以使用 prefix_length 和 max_expansions 参数来控制模糊查询过程：\n\nprefix_length 参数可以指定不被模糊化的字符前缀长度，如：prefix_length 为 2 ，则 rale 不能模糊化为 rule，但可以模糊化为 raw。\n\nmax_expansions 参数可以指定最多被模糊匹配词的个数。\n\n参考文档： [https://www.elastic.co/cn/blog/found-fuzzy-search](https://www.elastic.co/cn/blog/found-fuzzy-search)"
+									},
+									"response": []
+								},
+								{
+									"name": "zero terms query",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const body = pm.response.json();",
+													"",
+													"pm.test('zero terms query succesful', () => {",
+													"    // 当查询文本分词后得不到 token 时",
+													"    // zero_term_query 设置为 all，查询效果与 match_all 一致",
+													"    // 可以查看返回结果中的 profile 内容",
+													"    pm.expect(body.hits.total.value).eq(3051);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"query\": {\n    \"match\": {\n      \"title\": {\n        \"query\": \"to be or not to be\",\n        \"analyzer\": \"stop\", \n        \"operator\": \"and\",\n        \"zero_terms_query\": \"all\"\n      }\n    }\n  },\n  \"_source\": [\"id\"],\n  \"profile\": true\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/tmdb/_search",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"tmdb",
+												"_search"
+											]
+										},
+										"description": "### zero terms query\n\n当搜索文本被分词器过滤后没有任何查询 token，zero_terms_query 设置为 all 时，效果同 match_all ；设置为 none，则不返回任何文档。"
+									},
+									"response": []
+								},
+								{
+									"name": "synonyms",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const createIndex = eval(pm.globals.get(\"createIndex\"));",
+													"const createDocument = eval(pm.globals.get(\"createDocument\"));",
+													"const indexOptions = {",
+													"    \"indexName\": \"my-index-000001\",",
+													"    \"settings\": {",
+													"        \"index\" : {",
+													"            \"analysis\" : {",
+													"                \"analyzer\" : {",
+													"                    \"synonym\" : {",
+													"                        \"tokenizer\" : \"whitespace\",",
+													"                        \"filter\" : [\"synonym\"]",
+													"                    }",
+													"                },",
+													"                \"filter\" : {",
+													"                    \"synonym\" : {",
+													"                        \"type\" : \"synonym\",",
+													"                        \"synonyms\" : [",
+													"                            \"USA, united states of America\"",
+													"                        ]",
+													"                    }",
+													"                }",
+													"            }",
+													"        }",
+													"    },",
+													"    \"mappings\": {",
+													"        \"properties\": {",
+													"            \"message\": {",
+													"                \"type\": \"text\",",
+													"                \"analyzer\": \"synonym\"",
+													"            }",
+													"        }",
+													"    }",
+													"};",
+													"const doc = {",
+													"    \"indexName\": \"my-index-000001\",",
+													"    \"id\": 1,",
+													"    \"doc\": {",
+													"        \"message\": \"united states of America people\"",
+													"    }",
+													"};",
+													"",
+													"asyncSeries([",
+													"    cb => createIndex(indexOptions, cb),",
+													"    cb => createDocument(doc, cb),",
+													"    // wait 1 s",
+													"    cb => setTimeout(cb, 1000)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const asyncSeries = eval(pm.globals.get(\"asyncSeries\"));",
+													"const deleteIndex = eval(pm.globals.get(\"deleteIndex\"));",
+													"const body = pm.response.json();",
+													"",
+													"asyncSeries([",
+													"    cb => deleteIndex(\"my-index-000001\", cb)",
+													"], (err, resp) => {",
+													"    if (err) throw err;",
+													"",
+													"    pm.test('match synonyms successful', () => {",
+													"        let message = body.hits.hits[0]._source.message;",
+													"",
+													"        // 由于 message 字段指定了 synonym 分词器",
+													"        // 所以查询时 USA 会被转换为同义词 “united states of America people” 进行查询（见 profile）",
+													"        // 所以可以查到对应的内容",
+													"        pm.expect(body.hits.hits.length).eq(1);",
+													"        pm.expect(message).eq('united states of America people');",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"query\": {\n        \"match\": {\n            \"message\": {\n                \"query\": \"USA\"\n            }\n        }\n    },\n    \"profile\": true\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/my-index-000001/_search",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"my-index-000001",
+												"_search"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "### match\n\nmatch 是常用的全文搜索查询，包括可选的模糊（fuzzy）匹配，其在查询前会对查询文本进行分析（analyzed）。\n\n**查询参数**：\n\n- query 查询文本\n- analyzer 分词器，用于将查询文本转换为词（token）。默认使用字段上的分词器，如果没有则使用索引上的分词器\n- fuzziness 最大可匹配的编辑长度（edit distance）\n- max_expansions\n- prefox_length 不被模糊化的初始字符数量\n- lenient 如果为 true，查询数据不匹配且转换异常会报错\n- operator 查询时布尔逻辑，AND 代表匹配分词后的全部词，OR 代表匹配分词后的任意词\n- minimum_should_match 返回的文档至少匹配的查询子句\n- zero_terms_query 如果分词器过滤了所有词（toekn，例如查询文本全是停止词 ）时查询文档的策略，all 返回所有文档，none 不返回文档\n- ...\n    \n\n参考文档：\n\n- [Match query | Elasticsearch Guide \\[7.17\\] | Elastic](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-match-query.html)\n- [https://segmentfault.com/a/1190000017110948](https://segmentfault.com/a/1190000017110948)"
+						}
+					]
 				}
 			],
 			"description": "运行此集合的请求前，请先上传本目录下的 tmdb.json 文件（该文件为数千部电影的详细信息，来自于 [https://www.themoviedb.org/](https://www.themoviedb.org/) ）。pre-request script 会将 json 数据加载到 es 中的 tmdb 索引中，以用于后续的查询请求。tests 会删除 tmdb 索引以用于后续的重复测试（如果你想查看 tmdb 索引中的数据，只需将 tests 中的代码注释既可）。",
