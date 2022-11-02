@@ -3247,7 +3247,7 @@
 											"    // 比对 arr1 的结束词在 arr2 的位置",
 											"    let endIndex = arr2.indexOf(arr1[arr1.length - 1], 0);",
 											"    // 匹配到的文本长度 = 结束位置 - 起始位置",
-											"    let matchPharseLength = endIndex - startIndex;",
+											"    let matchPharseLength = (endIndex - startIndex) + 1;",
 											"",
 											"    // 计算查询文本和结果文本的差距",
 											"    return matchPharseLength - arr1.length;",
@@ -3293,10 +3293,70 @@
 						},
 						{
 							"name": "match phrase prefix query",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const queryText = 'evil Imperial forces';",
+											"const body = pm.response.json();",
+											"const stopwords = ['and', 'the', 'of', 'a'];",
+											"",
+											"function cacluteSlop(pharse1, pharse2) {",
+											"    let arr1 = pharse1.toLowerCase()",
+											"                    .split(/,?\\s+/)",
+											"                    // filter stop word",
+											"                    .filter(w => stopwords.indexOf(w) < 0);",
+											"    let arr2 = pharse2.toLowerCase()",
+											"                    .split(/,?\\s+/)",
+											"                    .filter(w => stopwords.indexOf(w) < 0);",
+											"",
+											"    // 查找 arr1 的起始词在 arr2 的位置",
+											"    let startIndex = arr2.indexOf(arr1[0]);",
+											"    // 比对 arr1 的结束词在 arr2 的位置",
+											"    let endIndex = arr2.indexOf(arr1[arr1.length - 1], 0);",
+											"    // 匹配到的文本长度 = 结束位置 - 起始位置 + 1（起始角标为 0）",
+											"    let matchPharseLength = (endIndex - startIndex) + 1;",
+											"",
+											"    // 计算查询文本和结果文本的差距",
+											"    return matchPharseLength - arr1.length;",
+											"}",
+											"",
+											"pm.test('match pharse query successful', () => {",
+											"    // 验证查询文本和匹配文本前缀一致",
+											"    pm.expect(cacluteSlop(queryText, body.hits.hits[0]._source.overview)).eq(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
 							"request": {
 								"method": "GET",
 								"header": [],
-								"description": "### match phrase prefix query\n\nmatch phrase prefix 查询会以查询文本的最后一个词为前缀，匹配以该词开头的文档，返回的文档内容必须同查询文本单词顺序一致。"
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"query\": {\n        \"match_phrase_prefix\": {\n            \"overview\": \"evil Imperial forces\"\n        }\n    },\n    \"_source\": [\"id\", \"title\", \"overview\"],\n    \"profile\": true\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/tmdb/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"tmdb",
+										"_search"
+									]
+								},
+								"description": "### match phrase prefix query\n\nmatch phrase prefix 查询会以查询文本的最后一个词为前缀，匹配以该词开头的文档，返回的文档内容必须同查询文本单词顺序一致。\n\n使用 match_phrase_prefix 可能会有一个问题：如果查询文本是 'quick brown f'，其会创建一个包含 quick、brown 两个词的短语（phrase）查询，并且从存储的词典中找到前 50 个以 'f' 开头的词加入到短语查询中。如果前 50 个以 'f' 为开头的词中不包含 'fox' 则无法查找到 'quikc brown fox' 文档。不过这一般不是问题：随着用户输入更多的字母这个词最终会被显示。或者使用 [completion suggester](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/search-suggesters.html#completion-suggester) 和[`search_as_you_type` field type](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/search-as-you-type.html) 能更好的解决此问题。"
 							},
 							"response": []
 						}
