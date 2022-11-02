@@ -17,7 +17,7 @@ function cacluteSlop(pharse1, pharse2) {
     // 比对 arr1 的结束词在 arr2 的位置
     let endIndex = arr2.indexOf(arr1[arr1.length - 1], 0);
     // 匹配到的文本长度 = 结束位置 - 起始位置
-    let matchPharseLength = endIndex - startIndex;
+    let matchPharseLength = (endIndex - startIndex) + 1;
 
     // 计算查询文本和结果文本的差距
     return matchPharseLength - arr1.length;
