@@ -1,0 +1,19 @@
+{
+  "name": "learn-elasticsearch",
+  "version": "1.0.0",
+  "description": "",
+  "main": "curl-gen.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "elasticsearch",
+    "postman"
+  ],
+  "author": "zhangxunwei",
+  "license": "ISC",
+  "dependencies": {
+    "postman-code-generators": "^1.2.2",
+    "postman-collection": "^4.1.5"
+  }
+}

@@ -13,6 +13,10 @@ function resolveGlobal() {
 	jq -c '.item[]' $1 | while read -r item; do
 		resolveFloder "." "$item"
 	done
+
+	echo '生成 curl 文件'
+
+	node ./curl-gen.js
 }
 
 # 解析 pre-request 和 tests 脚本
