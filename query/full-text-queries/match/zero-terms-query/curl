@@ -1,0 +1,15 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "match": {
+      "title": {
+        "query": "to be or not to be",
+        "analyzer": "stop", 
+        "operator": "and",
+        "zero_terms_query": "all"
+      }
+    }
+  },
+  "_source": ["id"],
+  "profile": true
+}'

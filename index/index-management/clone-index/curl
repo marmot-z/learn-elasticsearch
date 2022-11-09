@@ -1,0 +1,18 @@
+curl --location -g --request POST '127.0.0.1/my-index-000001/_clone/cloned-my-index-000001' \
+--data-raw '{
+    "settings": {
+        "index": {
+            "number_of_shards": 1,
+            "number_of_replicas": 2
+        }
+    },
+    "aliases": {
+        "clone-index01-high": {
+            "filter": {
+                "term": {
+                    "tags": "high"
+                }
+            }
+        }
+    }
+}'

@@ -1,0 +1,6 @@
+curl --location -g --request GET '127.0.0.1/_analyze' \
+--data-raw '{
+  "tokenizer" : "whitespace",
+  "filter" : ["lowercase", {"type": "stop", "stopwords": ["a", "is", "this"]}],
+  "text" : "this is a Test"
+}'

@@ -1,0 +1,41 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "title": "Four Baby"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "range": {
+            "vote_average": {
+              "lte": 6.0
+            }
+          }
+        }
+      ],
+      "should": [
+        {
+          "match": {
+            "production_companies.name": "Paramount Pictures"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "term": {
+            "status.keyword": "Released"
+          }
+        }
+      ],
+      "minimum_should_match": 1
+    }
+  },
+  "_source": [
+    "id", "title", "vote_count", "vote_average", "production_companies", "status"
+  ]
+}'

@@ -1,0 +1,8 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "exists": {
+      "field": "cast"
+    }
+  }
+}'

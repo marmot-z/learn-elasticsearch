@@ -1,0 +1,12 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+    "query": {
+        "match_phrase": {
+            "overview": {
+                "query": "which follows the comedic journeys of two fish",
+                "slop": 3
+            }
+        }
+    },
+    "profile": true
+}'

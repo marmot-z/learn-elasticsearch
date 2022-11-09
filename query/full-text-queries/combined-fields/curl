@@ -1,0 +1,12 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "combined_fields": {
+      "query": "first night scandalous four room",
+      "fields": ["title", "overview", "tagline"],
+      "minimum_should_match": 3
+    }
+  },
+  "_source": ["id", "title", "overview", "tagline"], 
+  "profile": true
+}'

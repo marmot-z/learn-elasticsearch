@@ -1,0 +1,19 @@
+curl --location -g --request GET '127.0.0.1/my-index-000001/_search' \
+--data-raw '{
+  "query": {
+    "dis_max": {
+      "queries": [
+        {
+          "match": {
+            "title": "Brown fox"
+          }
+        },
+        {
+          "match": {
+            "body": "Brown fox"
+          }
+        }
+      ]
+    }
+  }
+}'

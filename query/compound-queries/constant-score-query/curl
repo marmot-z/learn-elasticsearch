@@ -1,0 +1,14 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "constant_score": {
+      "filter": {
+        "terms": {
+          "id": [5, 805]
+        }
+      },
+      "boost": 1.2
+    }
+  },
+  "_source": ["id"]
+}'

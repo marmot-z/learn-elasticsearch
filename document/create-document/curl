@@ -1,0 +1,7 @@
+curl --location -g --request POST '127.0.0.1/users/_doc/1' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "user": "Mike",
+    "post_date": "2019-04-15T14:12:12",
+    "message": "trying out kibana"
+}'

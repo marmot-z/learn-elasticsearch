@@ -1,0 +1,10 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+    "query": {
+        "match_phrase_prefix": {
+            "overview": "evil Imperial forces"
+        }
+    },
+    "_source": ["id", "title", "overview"],
+    "profile": true
+}'

@@ -1,0 +1,12 @@
+curl --location -g --request PUT '127.0.0.1/my-index-000001/_mapping' \
+--data-raw '{
+  "properties": {
+    "name": {
+      "properties": {
+        "last": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}'

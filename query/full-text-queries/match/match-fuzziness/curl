@@ -1,0 +1,18 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+    "query": {
+        "match": {
+            "title": {
+                "query": "Fourr romms",
+                "operator": "and",
+                "fuzziness": "AUTO:3,5",
+                "prefix_length": 2
+            }
+        }
+    },
+    "_source": [
+        "id",
+        "title"
+    ],
+    "profile": true
+}'

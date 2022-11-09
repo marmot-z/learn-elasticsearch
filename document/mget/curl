@@ -1,0 +1,22 @@
+curl --location -g --request GET '127.0.0.1/test1/_mget/' \
+--data-raw '{
+    "docs": [
+        {
+            "_id": 1
+        },
+        {
+            "_id": 1,
+            "_index": "test2"
+        },
+        {
+            "_id": 2,
+            "_index": "test3",
+            "_type": "_doc",
+            "_source": ["id", "name"]
+        },
+        {
+            "_id": 3,
+            "_index": "test4"
+        }
+    ]
+}'

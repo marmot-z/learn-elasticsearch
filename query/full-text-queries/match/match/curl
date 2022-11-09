@@ -1,0 +1,13 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "match": {
+      "title": {
+        "query": "i want watch four child with you",
+        "operator": "or",
+        "minimum_should_match": 3
+      }
+    }
+  },
+  "_source": ["id", "title"]
+}'

@@ -1,0 +1,31 @@
+curl --location -g --request PUT '127.0.0.1/my-index-000001' \
+--data-raw '{
+    "settings": {
+        "index": {
+            "number_of_shards": 1,
+            "number_of_replicas": 2
+        }
+    },
+    "mappings": {
+        "properties": {
+            "id": {
+                "type": "integer"
+            },
+            "name": {
+                "type": "text"
+            },
+            "tags": {
+                "type": "keyword"
+            }
+        }
+    },
+    "aliases": {
+        "index01-middle": {
+            "filter": {
+                "term": {
+                    "tags": "middle"
+                }
+            }
+        }
+    }
+}'

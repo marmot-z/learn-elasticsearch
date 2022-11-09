@@ -1,0 +1,36 @@
+curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "boosting": {
+      "positive": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "title": "four Rooms baby"
+              }
+            },
+            {
+              "constant_score": {
+                "filter": {
+                  "ids": {
+                    "values": [
+                     805, 5
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "negative": {
+        "match": {
+          "title": "four"
+        }
+      },
+      "negative_boost": 0.5
+    }
+  },
+  "_source": ["id", "title"]
+}'

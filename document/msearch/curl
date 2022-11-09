@@ -1,0 +1,9 @@
+curl --location -g --request GET '127.0.0.1/test1/_msearch' \
+--header 'Content-Type: application/x-ndjson' \
+--data-raw '{}
+{"query":{"term":{"tag.keyword":"blogging"}}}
+{}
+{"query":{"match":{"message":"learning"}}}
+{"index":"test2"}
+{"query":{"match_all":{}}}
+'

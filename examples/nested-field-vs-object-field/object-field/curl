@@ -1,0 +1,21 @@
+curl --location -g --request GET '127.0.0.1/books_test/_search' \
+--data-raw '{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "authors.country.keyword": "Chile"
+          }
+        },
+        {
+          "range": {
+            "authors.age": {
+              "lte": 30
+            }
+          }
+        }
+      ]
+    }
+  }
+}'

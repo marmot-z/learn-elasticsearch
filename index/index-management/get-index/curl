@@ -1,0 +1,1 @@
+curl --location -g --request GET '127.0.0.1/my-index-000001'
