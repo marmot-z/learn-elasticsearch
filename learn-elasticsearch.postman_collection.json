@@ -3156,6 +3156,42 @@
 							"description": "### match\n\nmatch 是常用的全文搜索查询，包括可选的模糊（fuzzy）匹配，其在查询前会对查询文本进行分析（analyzed）。\n\n**查询参数**：\n\n- query 查询文本\n- analyzer 分词器，用于将查询文本转换为词（token）。默认使用字段上的分词器，如果没有则使用索引上的分词器\n- fuzziness 最大可匹配的编辑长度（edit distance）\n- max_expansions\n- prefox_length 不被模糊化的初始字符数量\n- lenient 如果为 true，查询数据不匹配且转换异常会报错\n- operator 查询时布尔逻辑，AND 代表匹配分词后的全部词，OR 代表匹配分词后的任意词\n- minimum_should_match 返回的文档至少匹配的查询子句\n- zero_terms_query 如果分词器过滤了所有词（toekn，例如查询文本全是停止词 ）时查询文档的策略，all 返回所有文档，none 不返回文档\n- ...\n    \n\n参考文档：\n\n- [Match query | Elasticsearch Guide \\[7.17\\] | Elastic](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/query-dsl-match-query.html)\n- [https://segmentfault.com/a/1190000017110948](https://segmentfault.com/a/1190000017110948)"
 						},
 						{
+							"name": "multi match",
+							"item": [
+								{
+									"name": "best fields",
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{esHost}}/tmdb/_search",
+											"host": [
+												"{{esHost}}"
+											],
+											"path": [
+												"tmdb",
+												"_search"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "- best fields 等于 match + dis_max，会查询多个字段中最符合查询内容的文档\n- most fields 用于多个字段中包含相同内容的场合，此查询中 operator 和 minimum_should_match 会作用于每个字段上，会要求每个字段都满足最少匹配的术语\n- cross fields 类似于 most fields，但其是术语为中心的，查询时将文档多个字段视为一个字段，所以 operator 和 minimum_should_match 会要求所有字段满足最少匹配术语查询，而不是每个字段\n- phrase 类似于 best fields，只不过其等于 phrase + dis_max\n- phrase_prefix 等于 phrase_prefix + dis_max\n- phrase_bool 等于 phrase_bool + dis_max"
+						},
+						{
 							"name": "match bool prefix query",
 							"event": [
 								{
@@ -3412,6 +3448,58 @@
 									]
 								},
 								"description": "combined_fields 查询支持搜索多个文本字段，就像查询内容被索引到一个组合字段中一样（即查询的术语会出现在多个字段中）。在查询过程中首先将查询文本分析成单个术语，然后在所有字段中查找每个术语，这在查询文本可能横跨多个文本字段时非常有用，比如查询文章的标题、概要和正文。"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "term queries",
+					"item": [
+						{
+							"name": "exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"let body = pm.response.json();",
+											"",
+											"pm.test('exists query successful', () => {",
+											"    // 部分文档 cast 字段没有内容 ",
+											"    pm.expect(body.hits.total.value).below(3051);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"query\": {\n    \"exists\": {\n      \"field\": \"cast\"\n    }\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{esHost}}/tmdb/_search",
+									"host": [
+										"{{esHost}}"
+									],
+									"path": [
+										"tmdb",
+										"_search"
+									]
+								},
+								"description": "### exists query\n\n返回字段中包含指定值的文档。\n\n索引内容不存在文档可能有以下几个原因：\n\n- 字段源内容 json 中为 null 或者 \\[\\]（空数组）\n- 字段 mapping 设置为 \"index\": false\n- 字段值超过了 mapping 中的 ignore_above 配置\n- 字段值格式异常，并且 mapping 中配置了 ignore_malformed\n    \n\n如果你想查询不包含指定值的文档，你可以搭配使用 bool query 中的 must_not 查询"
 							},
 							"response": []
 						}
