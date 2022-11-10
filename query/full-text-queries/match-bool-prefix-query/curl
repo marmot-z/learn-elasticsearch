@@ -1,4 +1,4 @@
-curl --location -g --request GET '127.0.0.1/tmdb/_search' \
+curl --location -g --request GET 'http://localhost:9200/tmdb/_search' \
 --data-raw '{
     "query": {
         "match_bool_prefix": {

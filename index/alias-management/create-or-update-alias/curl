@@ -1,1 +1,1 @@
-curl --location -g --request PUT '127.0.0.1/my-index-000001/_alias/my-alias'
+curl --location -g --request PUT 'http://localhost:9200/my-index-000001/_alias/my-alias'

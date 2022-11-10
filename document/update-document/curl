@@ -1,4 +1,4 @@
-curl --location -g --request POST '127.0.0.1/users/_update/1' \
+curl --location -g --request POST 'http://localhost:9200/users/_update/1' \
 --data-raw '{
     "doc": {
         "user": "Lucy"

@@ -1,4 +1,4 @@
-curl --location -g --request GET '127.0.0.1/test1/_mget/' \
+curl --location -g --request GET 'http://localhost:9200/test1/_mget/' \
 --data-raw '{
     "docs": [
         {

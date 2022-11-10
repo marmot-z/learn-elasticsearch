@@ -1,4 +1,4 @@
-curl --location -g --request PUT '127.0.0.1/my-index-000001/_settings' \
+curl --location -g --request PUT 'http://localhost:9200/my-index-000001/_settings' \
 --data-raw '{
     "index": {
         "number_of_replicas": 2

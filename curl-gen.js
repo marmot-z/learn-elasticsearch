@@ -41,7 +41,7 @@ function doGenerateCurl(request) {
 
 function replaceVariables(snippet) {
     let variables = {
-        'esHost': '127.0.0.1'
+        'esHost': 'http://localhost:9200'
     };
 
     return snippet.replace(/\{\{(\w*?)\}\}/g, (_, $1) => variables[$1] || '');

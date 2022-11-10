@@ -1,4 +1,4 @@
-curl --location -g --request PUT '127.0.0.1/users/_doc/1' \
+curl --location -g --request PUT 'http://localhost:9200/users/_doc/1' \
 --data-raw '{
     "user": "Lucy"
 }'

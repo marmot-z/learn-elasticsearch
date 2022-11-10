@@ -1,4 +1,4 @@
-curl --location -g --request POST '127.0.0.1/users/_doc/1' \
+curl --location -g --request POST 'http://localhost:9200/users/_doc/1' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "user": "Mike",

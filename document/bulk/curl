@@ -1,4 +1,4 @@
-curl --location -g --request POST '127.0.0.1/test/_bulk' \
+curl --location -g --request POST 'http://localhost:9200/test/_bulk' \
 --data-raw '{ "index" : { "_index" : "test", "_id" : "1" } }
 { "field1" : "value1" }
 { "delete" : { "_id" : "2" } }

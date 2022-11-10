@@ -1,1 +1,1 @@
-curl --location -g --request POST '127.0.0.1/my-index-000001/_close'
+curl --location -g --request POST 'http://localhost:9200/my-index-000001/_close'

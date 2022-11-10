@@ -1,4 +1,4 @@
-curl --location -g --request GET '127.0.0.1/books_test/_search' \
+curl --location -g --request GET 'http://localhost:9200/books_test/_search' \
 --data-raw '{
   "query": {
     "bool": {
