@@ -1,0 +1,29 @@
+curl --location -g --request GET 'http://localhost:9200/tmdb/_search' \
+--data-raw '{
+    "query": {
+        "bool": {
+            "should": [
+                {
+                    "fuzzy": {
+                        "title.keyword": {
+                            "value": "Metropoiles",
+                            "fuzziness": 1
+                        }
+                    }
+                },
+                {
+                    "fuzzy": {
+                        "title": {
+                            "value": "elementes",
+                            "fuzziness": "auto"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "_source": [
+        "id",
+        "title"
+    ]
+}'
