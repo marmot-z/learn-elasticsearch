@@ -1,0 +1,9 @@
+curl --location -g --request GET 'http://localhost:9200/tmdb/_search' \
+--data-raw '{
+  "query": {
+    "ids": {
+      "values": [5,8,11]
+    }
+  },
+  "_source": ["id", "title"]
+}'
