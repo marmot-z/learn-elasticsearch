@@ -7,3 +7,5 @@ pm.test('ids query successful', () => {
     pm.expect(docIds.indexOf(8) == -1).to.be.true;
     pm.expect(docIds.indexOf(11) > -1).to.be.true;
 });
+
+pm.collectionVariables.set('collection.finish', true);
